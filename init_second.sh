@@ -14,7 +14,10 @@ export USER_ID="${USER_ID:-1000}"
 export GROUP_ID="${GROUP_ID:-1000}"
 export ANDROID_HOME="/opt/android-sdk"
 export ANDROID_SDK_ROOT="${ANDROID_HOME}"
-export ANDROID_NDK_ROOT="${ANDROID_HOME}/ndk/22.1.7171670"
+export ANDROID_NDK_ROOT="${ANDROID_HOME}/ndk/21.4.7075529"
+export ANDROID_NDK_PLATFORM=android-21
+export ANDROID_API_VERSION=android-31
+export ANDROID_BUILD_TOOLS_REVISION=31.0.0
 
 echo "📦 Configuring environment: Qt=${QT_VERSION}, UID=${USER_ID}:GID=${GROUP_ID}"
 
@@ -23,9 +26,9 @@ echo "📦 Configuring environment: Qt=${QT_VERSION}, UID=${USER_ID}:GID=${GROUP
 # =============================================================================
 echo '📁 Creating directory structure...'
 mkdir -p /opt/workspace/download \
+         /opt/ccache  \   
          /opt/qt-creator \
-         "${ANDROID_HOME}" \
-         "${ANDROID_NDK_ROOT}/samples" \
+         "${ANDROID_HOME}" \        
          /opt/cmake \
          /usr/local/src/fonts/adobe-fonts/source-code-pro \
          /opt/workspace/dracula \
@@ -69,10 +72,13 @@ if [ ! -f /opt/.initialized ]; then
     fi
     export PATH="${CMDLINE_TOOLS_ROOT}/latest/bin:/opt/cmake/bin:${PATH}"
 
-    echo '📲 Installing Android SDK/NDK components...'
+    echo '📲 Installing Android SDK/NDK components:android-31;build-tools;31.0.0;ndk;21.4.7075529...'
     yes | sdkmanager --sdk_root=${ANDROID_SDK_ROOT} --licenses > /dev/null 2>&1
-    sdkmanager --sdk_root=${ANDROID_SDK_ROOT} "platforms;android-31" "build-tools;31.0.0" "ndk;22.1.7171670"
+#https://medium.com/@shmilysyg/set-android-target-sdk-level-33-in-qt-38bb9049924c    
+    sdkmanager --sdk_root=${ANDROID_SDK_ROOT} "platforms;android-31" "platform-tools" "build-tools;31.0.0" "ndk;21.4.7075529"
+
     
+    mkdir -p "${ANDROID_NDK_ROOT}/samples"
     unzip -o /opt/workspace/download/ndk-samples.zip -d "${ANDROID_NDK_ROOT}/samples"
     cp /opt/workspace/download/bundletool.jar "${ANDROID_HOME}/bundletool-all-1.3.0.jar"
 
@@ -160,16 +166,19 @@ if [ ! -f /opt/.builded_amd64 ]; then
 
     /usr/local/src/qt5/configure \
         -release -optimize-size -ccache -opensource -confirm-license -dbus \
-        -qt-zlib -qt-libjpeg -qt-libpng -qt-freetype -qt-pcre -qt-harfbuzz \
-        -fontconfig -nomake tests -nomake examples -no-feature-d3d12 \
+        -qt-zlib -qt-libjpeg -qt-libpng -qt-pcre -qt-harfbuzz \
+	-fontconfig -feature-freetype -system-freetype FREETYPE_INCDIR=/usr/include/freetype2 \
+        -nomake tests -nomake examples -no-feature-d3d12 \
+        -skip qtdocgallery \
         -skip 3d -skip activeqt -skip canvas3d -skip datavis3d -skip doc \
         -skip gamepad -skip lottie -skip macextras -skip quick3d -skip script \
         -skip scxml -skip speech -skip virtualkeyboard -skip qtwebengine \
         -skip webchannel -skip webengine -skip webglplugin -skip websockets \
         -skip webview -skip winextras \
-        -prefix "/opt/Qt/${QT_VERSION}-amd64-lts-lgpl" -pkg-config
+        -prefix "/opt/Qt/${QT_VERSION_SHORT}-amd64-lts-lgpl" -pkg-config
 
-    make -j "$(nproc)" && make install
+    make -j "$(nproc)" 
+    make install
     touch /opt/.builded_amd64
     echo '✅ amd64 build complete.'
 else
@@ -183,24 +192,23 @@ if [ ! -f /opt/.builded_android ]; then
     echo '🔨 Building Qt5 for Android...'
     rm -rf /tmp/build_qt_android
     mkdir -p /tmp/build_qt_android
-    cd /tmp/build_qt_android
+    cd /tmp/build_qt_android 
 
-    export ANDROID_NDK_PLATFORM=android-21
-    export ANDROID_API_VERSION=android-31
-    export ANDROID_BUILD_TOOLS_REVISION=31.0.0
-
-/usr/local/src/qt5/configure  \
-    -ccache \
+#https://github.com/carlonluca/docker-qt/blob/master/build_5.15.8.sh
+/usr/local/src/qt5/configure \
     -opensource \
     -confirm-license \
-    -xplatform android-clang \
-    -disable-rpath \
-    -android-ndk ${ANDROID_NDK_ROOT} \
-    -android-sdk ${ANDROID_HOME} \
-    -android-ndk-host linux-x86_64 \
-    -no-warnings-are-errors \
+    -release \
     -nomake tests \
     -nomake examples \
+    -android-ndk $ANDROID_NDK_ROOT \
+    -android-sdk $ANDROID_SDK_ROOT \
+    -no-warnings-are-errors \
+    -xplatform android-clang \
+    -disable-rpath \
+    -android-ndk-host linux-x86_64 \
+    --recheck \
+    -ccache \
     -qt-freetype \
     -qt-harfbuzz \
     -qt-libjpeg \
@@ -211,11 +219,9 @@ if [ ! -f /opt/.builded_android ]; then
     -skip qtdocgallery \
     -skip activeqt \
     -skip canvas3d \
-    -skip connectivity \
     -skip datavis3d \
     -skip doc \
     -skip gamepad \
-    -skip location \
     -skip lottie \
     -skip macextras  \
     -skip networkauth \
@@ -241,12 +247,15 @@ if [ ! -f /opt/.builded_android ]; then
     -no-feature-d3d12 \
     -ssl \
     -skip winextras \
-    OPENSSL_INCDIR='/opt/android-sdk/android_openssl/ssl_1.1/include/' \
-    OPENSSL_LIBS_DEBUG="-llibssl -llibcrypto" \
-    OPENSSL_LIBS_RELEASE="-llibssl -llibcrypto" \
-    -prefix /opt/Qt/${QT_VERSION}-android-lts-lgpl
+    -prefix /opt/Qt/${QT_VERSION_SHORT}-android-lts-lgpl \
+    -openssl-runtime -I /opt/android-sdk/android_openssl/ssl_1.1/include
 
-    make -j "$(nproc)" && make install
+#    OPENSSL_INCDIR="/opt/android-sdk/android_openssl/ssl_1.1/include/" \
+#    OPENSSL_LIBS_DEBUG="-llibssl -llibcrypto" \
+#    OPENSSL_LIBS_RELEASE="-llibssl -llibcrypto" 
+    
+    make -j "$(nproc)" 
+    make install
     touch /opt/.builded_android
     echo '✅ Android build complete.'
 else

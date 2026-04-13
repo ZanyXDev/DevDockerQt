@@ -25,6 +25,8 @@ services:
       - XAUTHORITY=$XAUTH
       - ANDROID_ADB_SERVER_ADDRESS=host.docker.internal
       - GPG_TTY=/dev/console
+      - CCACHE_DIR=/opt/ccache  
+      - CCACHE_TEMPDIR=/opt/ccache/tmp
     devices:
       - /dev/dri:/dev/dri
     extra_hosts:
@@ -36,7 +38,6 @@ services:
       - $XAUTH:$XAUTH
       - src-volume:/usr/local/src
       - opt-volume:/opt
-      - ccache-volume:/ccache
       - type: bind
         source: $HOME/qtcreator-app
         target: /home/developer    
@@ -57,22 +58,24 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1.25'
+          cpus: '2.25'
           memory: 2048M
         reservations:
-          cpus: '0.5'
+          cpus: '1.25'
           memory: 1024M
     user: "root:root"
     build:                
       context: .
     environment:
         - QT_VERSION=${QT_VERSION}
+        - QT_VERSION_SHORT=${QT_VERSION_SHORT}
         - USER_ID=${USER_ID}
         - GROUP_ID=${GROUP_ID}
         - LANG=ru-RU.UTF-8
         - CMAKE_URL= ${CMAKE_URL}
         - QTCREATOR_URL=${QTCREATOR_URL}    
-        - CMDTOOLS_URL=${CMDTOOLS_URL}            
+        - CMDTOOLS_URL=${CMDTOOLS_URL}     
+        - CCACHE_DIR="/ccache"       
     volumes:
       - ${PWD}/init_second.sh:/root/init.sh 
       - src-volume:/usr/local/src

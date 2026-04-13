@@ -56,13 +56,17 @@ ENV PATH="${JAVA_HOME}/bin:${PATH}"
 ENV PATH="/opt/Qt/${QT_VERSION}-amd64-lts-lgpl/bin:${PATH}"
 ENV PATH="/opt/Qt/${QT_VERSION}-android-lts-lgpl/bin:${PATH}"
 ENV PATH="/opt/qt-creator/bin:${PATH}"
-
-ENV ANDROID_SDK_ROOT="/opt/android-sdk"
-ENV ANDROID_NDK_ROOT="/opt/android-sdk/ndk"    
+   
+ENV ANDROID_HOME="/opt/android-sdk"
+ENV ANDROID_SDK_ROOT="${ANDROID_HOME}"
+ENV ANDROID_NDK_ROOT="${ANDROID_HOME}/ndk/21.4.7075529"
+ENV ANDROID_NDK_PLATFORM=android-21
+ENV ANDROID_API_VERSION=android-31
+ENV ANDROID_BUILD_TOOLS_REVISION=31.0.0
 
 ENV QT_WEBKIT=${QT_WEBKIT:-"n"}
 ENV QT_WEBENGINE=${QT_WEBENGINE:-"n"}
-ENV CCACHE_DIR="/ccache"
+
 
 RUN set -eux; \
     echo "go-faster apt"; \
@@ -114,6 +118,8 @@ RUN set -eux; \
     apt-get -y install wget unzip ;\ 
     echo "Add small X11 tools Ubuntu/Debian " ;\
     apt-get -y install xprintidle ;\      
+    echo "Install the BlueZ development headers and D-Bus development packages" ;\ 
+    apt-get install -y libbluetooth-dev bluez libdbus-1-dev ;\
     apt-get clean -y && rm -rf /var/lib/apt/lists/*
 
 #Чтобы внутри контейнера работал отладчик, добавил это, решение взял отсюда
@@ -131,6 +137,7 @@ RUN echo "/usr/local/lib" >> /etc/ld.so.conf.d/x86_64-linux-gnu.conf  &&\
     ln -snf /usr/share/zoneinfo/$TZ /etc/localtime &&\
     echo $TZ > /etc/timezone &&\
     if [ ${USER_ID:-0} -ne 0 ] && [ ${GROUP_ID:-0} -ne 0 ]; then \
+     echo "Create user developer ${USER_ID}:${GROUP_ID} " &&\
       groupadd -g ${GROUP_ID} developer &&\
       useradd -u ${USER_ID} -g ${GROUP_ID} developer &&\
       install -d -m 0755 -o developer -g ${GROUP_ID} /home/developer &&\
