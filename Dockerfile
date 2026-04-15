@@ -59,16 +59,17 @@ ENV PATH="/opt/qt-creator/bin:${PATH}"
    
 ENV ANDROID_HOME="/opt/android-sdk"
 ENV ANDROID_SDK_ROOT="${ANDROID_HOME}"
-ENV ANDROID_NDK_ROOT="${ANDROID_HOME}/ndk/21.4.7075529"
+ENV ANDROID_NDK_ROOT="${ANDROID_HOME}/ndk/21.3.6528147"
 ENV ANDROID_NDK_PLATFORM=android-21
-ENV ANDROID_API_VERSION=android-31
-ENV ANDROID_BUILD_TOOLS_REVISION=31.0.0
+ENV ANDROID_API_VERSION=android-30
+ENV ANDROID_BUILD_TOOLS_REVISION=30.0.3
 
 ENV QT_WEBKIT=${QT_WEBKIT:-"n"}
 ENV QT_WEBENGINE=${QT_WEBENGINE:-"n"}
 
 
 RUN set -eux; \
+    export LANG=en_EN.UTF-8 ;\
     echo "go-faster apt"; \
     echo 'Acquire::Languages "none";' > /etc/apt/apt.conf.d/90nolanguages;\
     echo 'APT::Get::Install-Recommends "false";'> /etc/apt/apt.conf.d/99nosuggest;\

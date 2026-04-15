@@ -14,10 +14,10 @@ export USER_ID="${USER_ID:-1000}"
 export GROUP_ID="${GROUP_ID:-1000}"
 export ANDROID_HOME="/opt/android-sdk"
 export ANDROID_SDK_ROOT="${ANDROID_HOME}"
-export ANDROID_NDK_ROOT="${ANDROID_HOME}/ndk/21.4.7075529"
+export ANDROID_NDK_ROOT="${ANDROID_HOME}/ndk/21.3.6528147"
 export ANDROID_NDK_PLATFORM=android-21
-export ANDROID_API_VERSION=android-31
-export ANDROID_BUILD_TOOLS_REVISION=31.0.0
+export ANDROID_API_VERSION=android-30
+export ANDROID_BUILD_TOOLS_REVISION=30.0.3
 
 echo "📦 Configuring environment: Qt=${QT_VERSION}, UID=${USER_ID}:GID=${GROUP_ID}"
 
@@ -26,14 +26,12 @@ echo "📦 Configuring environment: Qt=${QT_VERSION}, UID=${USER_ID}:GID=${GROUP
 # =============================================================================
 echo '📁 Creating directory structure...'
 mkdir -p /opt/workspace/download \
+         /opt/workspace/dracula \
          /opt/ccache  \   
          /opt/qt-creator \
-         "${ANDROID_HOME}" \        
+         /opt/android-sdk \        
          /opt/cmake \
-         /usr/local/src/fonts/adobe-fonts/source-code-pro \
-         /opt/workspace/dracula \
-         /tmp/build_qt_amd64 \
-         /tmp/build_qt_android
+         /usr/local/src/fonts/adobe-fonts/source-code-pro 
 
 # =============================================================================
 # 3. Загрузка и распаковка зависимостей
@@ -72,11 +70,9 @@ if [ ! -f /opt/.initialized ]; then
     fi
     export PATH="${CMDLINE_TOOLS_ROOT}/latest/bin:/opt/cmake/bin:${PATH}"
 
-    echo '📲 Installing Android SDK/NDK components:android-31;build-tools;31.0.0;ndk;21.4.7075529...'
+    echo '📲 Installing Android SDK/NDK components:android-30;build-tools;30.0.3;ndk;21.3.6528147 ...'
     yes | sdkmanager --sdk_root=${ANDROID_SDK_ROOT} --licenses > /dev/null 2>&1
-#https://medium.com/@shmilysyg/set-android-target-sdk-level-33-in-qt-38bb9049924c    
-    sdkmanager --sdk_root=${ANDROID_SDK_ROOT} "platforms;android-31" "platform-tools" "build-tools;31.0.0" "ndk;21.4.7075529"
-
+    sdkmanager --sdk_root=${ANDROID_SDK_ROOT} "platforms;android-30" "platform-tools" "build-tools;30.0.3" "ndk;21.3.6528147"
     
     mkdir -p "${ANDROID_NDK_ROOT}/samples"
     unzip -o /opt/workspace/download/ndk-samples.zip -d "${ANDROID_NDK_ROOT}/samples"
@@ -128,25 +124,7 @@ if [ ! -f /opt/.cloned ]; then
 
     cd /usr/local/src/qt5
     echo "🔗 Initializing Qt5 submodules (skipping heavy ones)..."
-    git -c submodule.qt3d.update=none \
-        -c submodule.qtactiveqt.update=none \
-        -c submodule.qtcanvas3d.update=none \
-        -c submodule.qtdatavis3d.update=none \
-        -c submodule.qtgamepad.update=none \
-        -c submodule.qtlottie.update=none \
-        -c submodule.qtmacextras.update=none \
-        -c submodule.qtpim.update=none \
-        -c submodule.qtquick3d.update=none \
-        -c submodule.qtscript.update=none \
-        -c submodule.qtscxml.update=none \
-        -c submodule.qtspeech.update=none \
-        -c submodule.qtvirtualkeyboard.update=none \
-        -c submodule.qtwebengine.update=none \
-        -c submodule.qtwebglplugin.update=none \
-        -c submodule.qtwebsockets.update=none \
-        -c submodule.qtwebview.update=none \
-        -c submodule.qtwinextras.update=none \
-        -c submodule.qtxmlpatterns.update=none \
+    git -c submodule.qtwebengine.update=none \
         submodule update --init --recursive --jobs "$(nproc)"
 
     touch /opt/.cloned
@@ -164,18 +142,16 @@ if [ ! -f /opt/.builded_amd64 ]; then
     mkdir -p /tmp/build_qt_amd64
     cd /tmp/build_qt_amd64
 
+#https://github.com/carlonluca/docker-qt/blob/master/builder/build_amd64.sh
     /usr/local/src/qt5/configure \
-        -release -optimize-size -ccache -opensource -confirm-license -dbus \
-        -qt-zlib -qt-libjpeg -qt-libpng -qt-pcre -qt-harfbuzz \
-	-fontconfig -feature-freetype -system-freetype FREETYPE_INCDIR=/usr/include/freetype2 \
-        -nomake tests -nomake examples -no-feature-d3d12 \
+        -ccache \
+        -skip qtwebengine \
         -skip qtdocgallery \
-        -skip 3d -skip activeqt -skip canvas3d -skip datavis3d -skip doc \
-        -skip gamepad -skip lottie -skip macextras -skip quick3d -skip script \
-        -skip scxml -skip speech -skip virtualkeyboard -skip qtwebengine \
-        -skip webchannel -skip webengine -skip webglplugin -skip websockets \
-        -skip webview -skip winextras \
-        -prefix "/opt/Qt/${QT_VERSION_SHORT}-amd64-lts-lgpl" -pkg-config
+        -opensource -confirm-license -release \
+        -nomake tests -nomake examples -qt-zlib -qt-libjpeg -qt-libpng -xcb \
+        -qt-freetype -qt-pcre -qt-harfbuzz \
+        -prefix "/opt/Qt/${QT_VERSION_SHORT}-amd64-lts-lgpl" \
+        -v -pkg-config
 
     make -j "$(nproc)" 
     make install
@@ -196,63 +172,64 @@ if [ ! -f /opt/.builded_android ]; then
 
 #https://github.com/carlonluca/docker-qt/blob/master/build_5.15.8.sh
 /usr/local/src/qt5/configure \
-    -opensource \
-    -confirm-license \
-    -release \
-    -nomake tests \
-    -nomake examples \
-    -android-ndk $ANDROID_NDK_ROOT \
-    -android-sdk $ANDROID_SDK_ROOT \
-    -no-warnings-are-errors \
-    -xplatform android-clang \
-    -disable-rpath \
-    -android-ndk-host linux-x86_64 \
-    --recheck \
-    -ccache \
-    -qt-freetype \
-    -qt-harfbuzz \
-    -qt-libjpeg \
-    -qt-libpng \
-    -qt-pcre \
-    -qt-zlib \
-    -skip 3d \
-    -skip qtdocgallery \
-    -skip activeqt \
-    -skip canvas3d \
-    -skip datavis3d \
-    -skip doc \
-    -skip gamepad \
-    -skip lottie \
-    -skip macextras  \
-    -skip networkauth \
-    -skip qtwebengine \
-    -skip quick3d \
-    -skip quicktimeline \
-    -skip remoteobjects \
-    -skip script \
-    -skip scxml \
-    -skip sensors \
-    -skip serialbus \
-    -skip serialport \
-    -skip speech \
-    -skip virtualkeyboard \
-    -skip wayland \
-    -skip webchannel \
-    -skip webengine \
-    -skip webglplugin \
-    -skip websockets \
-    -skip webview \
-    -skip x11extras \
-    -skip xmlpatterns \
-    -no-feature-d3d12 \
-    -ssl \
-    -skip winextras \
-    -prefix /opt/Qt/${QT_VERSION_SHORT}-android-lts-lgpl \
-    -openssl-runtime -I /opt/android-sdk/android_openssl/ssl_1.1/include
-
-#    OPENSSL_INCDIR="/opt/android-sdk/android_openssl/ssl_1.1/include/" \
-#    OPENSSL_LIBS_DEBUG="-llibssl -llibcrypto" \
-#    OPENSSL_LIBS_RELEASE="-llibssl -llibcrypto" 
+-xplatform android-clang \
+-verbose \
+-disable-rpath \
+-android-ndk ${ANDROID_NDK_ROOT} \
+-android-sdk ${ANDROID_HOME} \
+-no-warnings-are-errors \
+-opensource \
+-confirm-license \
+-nomake tests \
+-nomake examples \
+-qt-freetype \
+-qt-harfbuzz \
+-qt-libjpeg \
+-qt-libpng \
+-qt-pcre \
+-qt-zlib \
+-skip 3d \
+-skip activeqt \
+-skip canvas3d \
+-skip charts \
+-skip connectivity \
+-skip datavis3d \
+-skip doc \
+-skip gamepad \
+-skip location \
+-skip lottie \
+-skip macextras \
+-skip networkauth \
+-skip qtwebengine \
+-skip quick3d \
+-skip quicktimeline \
+-skip remoteobjects \
+-skip script \
+-skip scxml \
+-skip sensors \
+-skip serialbus \
+-skip serialport \
+-skip speech \
+-skip virtualkeyboard \
+-skip wayland \
+-skip webchannel \
+-skip webengine \
+-skip webglplugin \
+-skip websockets \
+-skip webview \
+-skip x11extras \
+-skip xmlpatterns \
+-skip winextras \
+-skip qtdocgallery \
+-no-feature-d3d12 \
+-no-feature-pulseaudio \
+-no-feature-alsa \
+-openssl-runtime \
+-ssl \
+OPENSSL_INCDIR='/opt/android-sdk/android_openssl/ssl_1.1/include/' \
+OPENSSL_LIBS_DEBUG="-llibssl -llibcrypto" \
+OPENSSL_LIBS_RELEASE="-llibssl -llibcrypto" \
+-prefix /opt/Qt/${QT_VERSION_SHORT}-android-lts-lgpl
     
     make -j "$(nproc)" 
     make install
