@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -Euo pipefail
-# set -x  # Раскомментируйте только для отладки
+set -x  # Раскомментируйте только для отладки
 #Пт 10 апр 2026 20:24:21 
 # =============================================================================
 # 1. Валидация и дефолты критических переменных
@@ -22,6 +22,7 @@ echo "📦 Configuring environment: Qt=${QT_VERSION}, UID=${USER_ID}:GID=${GROUP
 # =============================================================================
 echo '📁 Creating directory structure...'
 mkdir -p /opt/download \
+	 /opt/bin \
          /ccache/${USER_ID:-1000} \
          /ccache/${USER_ID:-1000}\tmp \
          /usr/local/src/fonts/adobe-fonts/source-code-pro 
@@ -183,6 +184,11 @@ fi
 # 6. Сборка Qt6 для Android
 # =============================================================================
 if [ ! -f /opt/.build_android_arm64_v8a ]; then
+    # Unset ВСЕ переменные, связанные с кросс-компиляцией и путями Qt
+    unset QT_HOST_PATH
+    unset QT_PLUGIN_PATH
+    unset QML_IMPORT_PATH
+    unset QML2_IMPORT_PATH
     echo '🔨 Building Qt6 for android_arm64_v8a...'
     rm -rf /tmp/build_qt5_android_arm64_v8a
     mkdir -p /tmp/build_qt5_android_arm64_v8a
@@ -204,6 +210,9 @@ if [ ! -f /opt/.build_android_arm64_v8a ]; then
     -DOPENSSL_INCLUDE_DIR=/opt/android-sdk/android_openssl/ssl_3/include \
     -DOPENSSL_LIBRARIES=/opt/android-sdk/android_openssl/ssl_3/arm64-v8a 
     
+    cmake --build . --parallel $(($(nproc)))
+    cmake --install .
+    cp config.summary /opt/qt/v${QT_VERSION}/android_arm64_v8a   
     touch /opt/.builded_android_arm64_v8a
     echo '✅ Android build complete.'
 else
