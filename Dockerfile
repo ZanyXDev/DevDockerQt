@@ -147,6 +147,8 @@ RUN echo "/usr/local/lib" >> /etc/ld.so.conf.d/x86_64-linux-gnu.conf  &&\
       adduser developer audio &&\
       echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers &&\
       mkdir -p /home/developer &&\
+	  cp /etc/skel/.profile /etc/skel/.bashrc /home/developer &&\
+      chmod 644 /home/developer/.profile /home/developer/.bashrc  &&\
       chown ${USER_ID}:${GROUP_ID} -R /home/developer &&\
       echo "finished installing" ;\
     fi
