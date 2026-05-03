@@ -14,6 +14,8 @@ echo "QTCREATOR_URL=${QTCREATOR_URL}" >>.env
 
 echo "USER_ID=$(id -u)" >>.env
 echo "GROUP_ID=$(id -g)" >>.env
+echo "XDG_RUNTIME_DIR=/tmp/runtime-developer1"
+
 # Пути для X11
 echo "XSOCK=/tmp/.X11-unix" >>.env
 echo "XAUTH=${HOME}/.Xauthority" >>.env
