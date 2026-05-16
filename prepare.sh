@@ -6,7 +6,7 @@ CCACHE_DIR=/ccache
 QT_VERSION=6.11.0
 # Образы и URL
 QTCREATOR_IMAGE_NAME=${USER}/qt6-19-21-36-27.2.12479018
-QTCREATOR_URL=https://github.com/qt-creator/qt-creator/releases/download/v19.0.0/qtcreator-linux-x64-19.0.0.deb
+QTCREATOR_URL=https://github.com/qt-creator/qt-creator/releases/download/v19.0.0/qtcreator-linux-x64-19.0.1.deb
 
 echo "QT_VERSION=${QT_VERSION}" >.env
 echo "QTCREATOR_IMAGE_NAME=${QTCREATOR_IMAGE_NAME}" >>.env
