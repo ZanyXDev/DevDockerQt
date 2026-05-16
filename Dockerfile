@@ -32,13 +32,16 @@ RUN \
 # Базовая сборка и утилиты
   build-essential cmake ninja-build git meld wget curl gdb ccache \
   flex bison gperf perl ruby zstd lzip \
-  tzdata locales sudo iputils-ping nano mc xclip\
+  tzdata locales sudo iputils-ping nano mc xclip \
+  \
+  # сжатие данных (иногда используется в темах/иконках)
+  liblzo2-2 \
   \
   # Other cpp tools
-  cppcheck graphviz doxygen lldb clang-format autoconf \
+  cppcheck graphviz doxygen clang-format autoconf \
   \
   # Other debug tools
-  strace \    
+  strace clang-tidy clazy lldb\    
   \
   # Memory leaks cpp tools 
    valgrind \  
@@ -52,6 +55,32 @@ RUN \
   libxcomposite-dev libxdamage-dev libxkbcommon-dev libxkbcommon-x11-dev \
   libwayland-dev libegl1-mesa-dev libgles2-mesa-dev libgbm-dev \
   libdrm-dev libgl1-mesa-dev libglu1-mesa-dev freeglut3-dev \
+  \
+  # X11 (шрифты, многомониторные конфигурации, запись ввода для тестирования/доступности)
+  libxft-dev libxinerama-dev libxtst-dev \
+  \
+  # Протоколы для Wayland (современный заменяет X11)
+  wayland-protocols \  
+  \
+  # База графического стека (Cairo, Pango, Pixman), рендеринг 2D-графики, текста и шрифтов.
+  # библиотека Cairo (рисование линий, заливок, трансформаций)
+  libcairo2-dev libcairo-script-interpreter2 \
+  \
+  # низкоуровневая работа с пикселями (используется Cairo)
+  libpixman-1-dev \
+  \
+  # рендеринг текста и разметка (шрифты, перенос строк)
+  libpango1.0-dev pango1.0-tools \
+  \
+  # GTK и его окружение (ATK, GDK-Pixbuf, Epoxy, AT-SPI)
+  # доступность (Accessibility): экранные лупы, дикторы (для незрячих)
+  libatk1.0-dev gir1.2-atspi-2.0 \
+  \
+  # мост между ATK и AT-SPI, позволяет приложениям GTK общаться с менеджерами доступности (например, Orca)
+  libatk-bridge2.0-dev libatspi2.0-dev \
+  \
+  # загрузка и масштабирование изображений (PNG, JPEG)
+  libgdk-pixbuf-2.0-dev \
   \
   # LibXCB 
   '^libxcb.*-dev' \
@@ -88,6 +117,9 @@ RUN \
   \
   # Vulkan Современный рендерер Qt Quick / RHI
   libvulkan-dev glslang-tools spirv-tools \
+  \
+  # абстракция над OpenGL/Vulkan (позволяет не привязываться к конкретной версии GL)
+  libepoxy-dev \
   \
   # PipeWire Современный аудио/видео бэкенд для Linux
   libpipewire-0.3-dev libspa-0.2-dev \
