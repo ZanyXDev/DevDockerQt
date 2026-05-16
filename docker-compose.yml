@@ -40,14 +40,25 @@ services:
   # Main dev container
   qtcreator:   
     image: ${QTCREATOR_IMAGE_NAME:-zanyxdev/qt6-19-21-36-27.2.12479018} 
+    # Отключение ограничения ptrace
+    security_opt:
+      - seccomp:unconfined
+    # Часто ptrace требует и повышенных привилегий
+    # cap_add:
+    #   - SYS_PTRACE
+    # cap_add:
+    #   - CAP_SYS_PTRACE
+    cap_add:
+      - SYS_PTRACE
+      - CAP_SYS_PTRACE
     deploy:
       resources:
         limits:
-          cpus: '2.00'
-          memory: 6G
+          cpus: '8.00'
+          memory: 8G
         reservations:
-          cpus: '1.50'
-          memory: 2G
+          cpus: '4.0'
+          memory: 4G
     group_add:
       - ${GROUP_ID}
     depends_on:
@@ -89,10 +100,6 @@ services:
       - ${HOMEAPP}:/home/developer
     stdin_open: true
     tty: true
-    cap_add:
-      - SYS_PTRACE
-    security_opt:
-      - seccomp:unconfined
     init: true  
     command: bash          
 
