@@ -1,3 +1,4 @@
+name: devdockerqt5
 services:
   # Pre run setup container
   init-setup:
@@ -34,7 +35,7 @@ services:
       - ccache-volume:/ccache
       - test-volume:/data
     entrypoint: [] 
-    command: ["sh", "-c", "chmod +x /root/init.sh; /root/init.sh"]       
+    command: ["sh", "-c", "chmod +x /root/init.sh; echo /root/init.sh"]       
     restart: "no"     
       
   # Main dev container

@@ -196,6 +196,11 @@ RUN sed -i -e 's/# ru_RU.UTF-8 UTF-8/ru_RU.UTF-8 UTF-8/' /etc/locale.gen \
 ENV LANG=ru_RU.UTF-8
 ENV LC_ALL=ru_RU.UTF-8
 
+# Tune CCACHE
+ENV CCACHE_MAXSIZE=20G
+ENV CCACHE_COMPRESS=1
+ENV CCACHE_COMPRESSLEVEL=6
+
 # Setup ldconfig path
 RUN \
     echo "/usr/local/lib" >> /etc/ld.so.conf.d/x86_64-linux-gnu.conf  \
@@ -219,6 +224,7 @@ if [ ${USER_ID:-0} -ne 0 ] && [ ${GROUP_ID:-0} -ne 0 ]; then \
         mkdir -p /home/developer ;\
         chown ${USER_ID}:${GROUP_ID} -R /home/developer ;\
 fi 
+
 
 #COPY --chown=${USER_ID}:${GROUP_ID} toolchain.cmake /opt/toolchain.cmake
 #add rsync dotless files after first run in /home/developer

@@ -14,6 +14,10 @@ export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
 export ANDROID_HOME="/opt/android-sdk"
 export ANDROID_SDK_ROOT=/opt/android-sdk
 export ANDROID_NDK_ROOT=/opt/android-sdk/ndk/27.2.12479018
+export CCACHE_MAXSIZE=20G
+export CCACHE_COMPRESS=1
+export CCACHE_COMPRESSLEVEL=6
+
 
 echo "📦 Configuring environment: Qt=${QT_VERSION}, UID=${USER_ID}:GID=${GROUP_ID}"
 
