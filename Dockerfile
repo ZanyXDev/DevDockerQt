@@ -125,7 +125,7 @@ RUN \
   libpipewire-0.3-dev libspa-0.2-dev \
   \
   # Libclang Интеграция с Qt Creator (Clangd, QML LSP)
-  libclang-17-dev \
+  libclang-17-dev clangd\
   \
   # For Android 
   openjdk-17-jdk google-android-cmdline-tools-13.0-installer  \  

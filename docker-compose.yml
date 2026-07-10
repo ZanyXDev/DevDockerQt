@@ -12,6 +12,11 @@ services:
           cpus: '1.50'
           memory: 2G
     user: "root:root"
+    dns:
+        - 8.8.8.8
+        - 8.8.4.4
+    dns_search:
+        - .
     build:                
       dockerfile: ./Dockerfile 
       args:   
@@ -33,7 +38,6 @@ services:
       - src-volume:/usr/local/src
       - opt-volume:/opt
       - ccache-volume:/ccache
-      - test-volume:/data
     entrypoint: [] 
     command: ["sh", "-c", "chmod +x /root/init.sh; echo /root/init.sh"]       
     restart: "no"     
@@ -55,16 +59,21 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '8.00'
-          memory: 8G
-        reservations:
-          cpus: '4.0'
+          cpus: '2.50'
           memory: 4G
+        reservations:
+          cpus: '2.0'
+          memory: 2G
     group_add:
       - ${GROUP_ID}
     depends_on:
       init-setup:
         condition: service_completed_successfully   
+    dns:
+        - 8.8.8.8
+        - 8.8.4.4
+    dns_search:
+        - .
     build:                
       dockerfile: ./Dockerfile 
       args:   
@@ -74,15 +83,18 @@ services:
         GROUP_ID: ${GROUP_ID}
         TZ: "Europe/Moscow"
     container_name: qtcreator-6.11-dev
+    ports:
+      - "4096:4096"
     environment:
       - TERM=xterm-256color
-      - XDG_RUNTIME_DIR=/tmp/runtime-developer1
+      - XDG_RUNTIME_DIR=/tmp/runtime-developer
       - PULSE_SERVER=unix:${XDG_RUNTIME_DIR}/pulse/native
       - PULSE_COOKIE=/tmp/pulseaudio.cookie    
       - ANDROID_ADB_SERVER_ADDRESS=host.docker.internal
       - ADB_SERVER_SOCKET=tcp:host.docker.internal:5037
       - ANDROID_ADB_SERVER_PORT=5037 
-      - GPG_TTY=/dev/console
+      #- GPG_TTY=/dev/console
+      #- GPG_TTY=$(tty)
       - CCACHE_DIR=/ccache/${USER_ID:-1000}
       - CCACHE_TEMPDIR=/ccache/${USER_ID:-1000}/tmp
       - DISPLAY=:0  # явно задаём, чтобы переопределить Dockerfile ENV
@@ -99,6 +111,7 @@ services:
       - src-volume:/usr/local/src
       - opt-volume:/opt
       - ${HOMEAPP}:/home/developer
+      - share_workspace:/data/workspace
     stdin_open: true
     tty: true
     init: true  
@@ -111,5 +124,6 @@ volumes:
     name: ${OPT_VOLUME_NAME}
   ccache-volume:
     name: ${CCACHE_VOLUME}
-  test-volume:
-    name: 6.11-opt-volume
+  share_workspace:
+    external: true
+    name: share_workspace 
