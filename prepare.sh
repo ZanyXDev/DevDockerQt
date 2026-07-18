@@ -25,6 +25,10 @@ echo "SRC_VOLUME_NAME=${QT_VERSION}-src-volume" >>.env
 echo "OPT_VOLUME_NAME=${QT_VERSION}-opt-volume" >>.env
 echo "CCACHE_VOLUME=${QT_VERSION}-ccache-volume" >>.env
 
+#Порядок запуска: Первым должен быть запущен проект, который создаёт том (share_workspce). 
+#Если вы используете external: true в обоих проектах, том должен быть создан заранее командой:
+docker volume create share_workspace
+
 #  Home directory
 HOMEAPP="$HOME"/qtcreator-app/${QT_VERSION}
 echo "Creating QtCreatorApp directory..."  
