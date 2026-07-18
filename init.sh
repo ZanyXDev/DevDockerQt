@@ -57,15 +57,15 @@ if [ ! -f /opt/.initialized ]; then
     export LANG=en_EN.UTF-8 
     export DEBIAN_FRONTEND=noninteractive 
     export GOOGLE_ANDROID_MIRROR="https://dl.google.com"
-#   apt-get update    
-#   apt-get install -y openjdk-17-jdk google-android-cmdline-tools-13.0-installer    
+    apt-get update    
+    apt-get install -y openjdk-17-jdk google-android-cmdline-tools-13.0-installer    
     yes | sdkmanager --sdk_root=${ANDROID_SDK_ROOT} --licenses > /dev/null 2>&1
     yes | sdkmanager --sdk_root=${ANDROID_SDK_ROOT} "platforms;android-36" "platform-tools" "build-tools;36.0.0" 
     yes | sdkmanager --sdk_root=${ANDROID_SDK_ROOT} "ndk;27.2.12479018" 
     yes | sdkmanager --sdk_root=${ANDROID_SDK_ROOT} "cmdline-tools;latest"
     yes | sdkmanager --sdk_root=${ANDROID_SDK_ROOT} "emulator"
     yes | sdkmanager --sdk_root=${ANDROID_SDK_ROOT} "system-images;android-36;google_apis_playstore;x86_64"
-#    apt-get remove -y --purge openjdk-17-jdk google-android-cmdline-tools-13.0-installer 
+    apt-get remove -y --purge openjdk-17-jdk google-android-cmdline-tools-13.0-installer 
     touch /opt/.initialized
     echo '✅ Initialization stage complete.'
 else

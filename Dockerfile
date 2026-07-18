@@ -128,8 +128,9 @@ RUN \
   libclang-17-dev clangd\
   \
   # For Android 
-  openjdk-17-jdk google-android-cmdline-tools-13.0-installer  \  
-  openjdk-21-jdk protobuf-compiler xmlstarlet \
+  # openjdk-17-jdk google-android-cmdline-tools-13.0-installer  \  
+  \
+  openjdk-21-jdk protobuf-compiler xmlstarlet maven \
   \
   # For Android armv7a 
   libc6:i386 libncurses6:i386 libstdc++6:i386 g++-multilib libc6-dev-i386 \
@@ -163,7 +164,6 @@ ENV ANDROID_NDK_PLATFORM=android-27
 ENV ANDROID_API_VERSION=android-36
 ENV ANDROID_BUILD_TOOLS_REVISION=36.0.0
 
-
 #Troubleshooting
 #Enabling the logging categories under qt.qpa is a good idea in general. This will show some debug prints both from eglfs and the input handlers.
 #ENV QT_LOGGING_RULES=qt.qpa.*=true
@@ -173,10 +173,10 @@ ENV QT_PLUGIN_PATH="/opt/qt/v${QT_VERSION}/gcc_64/plugins:${QT_PLUGIN_PATH}"
 ENV QML_IMPORT_PATH="/opt/qt/v${QT_VERSION}/gcc_64/qml:${QML_IMPORT_PATH}"
 ENV QML2_IMPORT_PATH="/opt/qt/v${QT_VERSION}/gcc_64/qml:${QML2_IMPORT_PATH}"
 
-#ENV QT_HOST_PATH="/opt/qt/v${QT_VERSION}/android_x86_x64:${QT_HOST_PATH}"
-#ENV QT_PLUGIN_PATH="/opt/qt/v${QT_VERSION}/android_x86_x64/plugins:${QT_PLUGIN_PATH}"
-#ENV QML_IMPORT_PATH="/opt/qt/v${QT_VERSION}/android_x86_x64/qml:${QML_IMPORT_PATH}"
-#ENV QML2_IMPORT_PATH="/opt/qt/v${QT_VERSION}/android_x86_x64/qml:${QML2_IMPORT_PATH}"
+ENV QT_HOST_PATH="/opt/qt/v${QT_VERSION}/android_x86_x64:${QT_HOST_PATH}"
+ENV QT_PLUGIN_PATH="/opt/qt/v${QT_VERSION}/android_x86_x64/plugins:${QT_PLUGIN_PATH}"
+ENV QML_IMPORT_PATH="/opt/qt/v${QT_VERSION}/android_x86_x64/qml:${QML_IMPORT_PATH}"
+ENV QML2_IMPORT_PATH="/opt/qt/v${QT_VERSION}/android_x86_x64/qml:${QML2_IMPORT_PATH}"
 
 ENV QT_QPA_FONTDIR="/usr/share/fonts/truetype"
 
@@ -203,8 +203,8 @@ ENV CCACHE_COMPRESSLEVEL=6
 
 # Setup ldconfig path
 RUN \
-    echo "/usr/local/lib" >> /etc/ld.so.conf.d/x86_64-linux-gnu.conf  \
-&&  echo "/opt/qt/v${QT_VERSION}/gcc_64/lib" >> /etc/ld.so.conf.d/x86_64-linux-gnu.conf \
+    echo "/opt/qt/v${QT_VERSION}/gcc_64/lib" >> /etc/ld.so.conf.d/x86_64-linux-gnu.conf \
+&&  echo "/opt/qt/v${QT_VERSION}/android_arm64_v8a/lib" >> /etc/ld.so.conf.d/x86_64-linux-gnu.conf \
 &&  /sbin/ldconfig
 
 # Setup Timezone

@@ -3,13 +3,16 @@ services:
   # Pre run setup container
   init-setup:
     image: ${QTCREATOR_IMAGE_NAME:-zanyxdev/qt6-19-21-36-27.2.12479018}
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
     deploy:
       resources:
         limits:
-          cpus: '2.00'
+          cpus: '1.0'
           memory: 4G
         reservations:
-          cpus: '1.50'
+          cpus: '0.5'
           memory: 2G
     user: "root:root"
     dns:
@@ -33,16 +36,24 @@ services:
       - QTCREATOR_URL=${QTCREATOR_URL}  
       - CCACHE_DIR=/ccache
       - CCACHE_TEMPDIR=/ccache/tmp
+      #- TMPDIR=/tmp/build
+      - CCACHE_DIRECT=true
+      - CCACHE_INODECACHE=true
+      - CCACHE_COMPILERCHECK=content
     volumes:
-      - ${PWD}/init.sh:/root/init.sh 
+      - ${PWD}/init_2.sh:/root/init.sh 
       - src-volume:/usr/local/src
       - opt-volume:/opt
       - ccache-volume:/ccache
+      #- type: tmpfs
+      #  target: /tmp/build
+      #  tmpfs:
+      #    size: 4G  # Size in bytes (e.g., ~4GB)
     entrypoint: [] 
     command: ["sh", "-c", "chmod +x /root/init.sh; echo /root/init.sh"]       
     restart: "no"     
       
-  # Main dev container
+# Main dev container
   qtcreator:   
     image: ${QTCREATOR_IMAGE_NAME:-zanyxdev/qt6-19-21-36-27.2.12479018} 
     # Отключение ограничения ptrace
@@ -63,6 +74,16 @@ services:
           memory: 4G
         reservations:
           cpus: '2.0'
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1   
+    deploy:
+      resources:
+        limits:
+          cpus: '1.75'
+          memory: 6G
+        reservations:
+          cpus: '0.75'
           memory: 2G
     group_add:
       - ${GROUP_ID}
@@ -98,6 +119,8 @@ services:
       - CCACHE_DIR=/ccache/${USER_ID:-1000}
       - CCACHE_TEMPDIR=/ccache/${USER_ID:-1000}/tmp
       - DISPLAY=:0  # явно задаём, чтобы переопределить Dockerfile ENV
+      - WORKSPACE_GID=1000  # Добавляем GID для workspace
+      - WORKSPACE_UMASK=0002  # Маска прав для новых файлов
     devices:
       - /dev/dri:/dev/dri
     extra_hosts:
