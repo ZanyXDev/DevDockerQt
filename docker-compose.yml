@@ -91,6 +91,10 @@ services:
     container_name: qtcreator-6.11-dev
     ports:
       - "4096:4096"
+       # Пробрасываем диапазон портов для ADB forward отладчика
+      - "8000-8100:8000-8100"
+      - "5038-5050:5038-5050"
+      - "43757:43757"
     environment:
       - TERM=xterm-256color
       - ANDROID_ADB_SERVER_ADDRESS=host.docker.internal

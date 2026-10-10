@@ -27,6 +27,10 @@ RUN \
 && echo 'APT::Get::Install-Suggests "false";' >> /etc/apt/apt.conf.d/99nosuggest \
 && dpkg --add-architecture i386 \
 && apt-get -y update \
+# --- ДОБАВЛЯЕМ ПАКЕТ ДЛЯ PPA ---
+&& apt-get -y install software-properties-common gnupg \
+&& add-apt-repository -y ppa:deadsnakes/ppa \
+&& apt-get -y update \
 && apt-get -y upgrade \
 && apt-get -y install \
 # Базовая сборка и утилиты
@@ -130,16 +134,21 @@ RUN \
   libasound2-plugins \  
   \
   # Libclang Интеграция с Qt Creator (Clangd, QML LSP)
-  libclang-17-dev clangd\
+  libclang-17-dev clangd \
   \
   # For Android 
   # openjdk-17-jdk google-android-cmdline-tools-13.0-installer  \  
   \
   openjdk-21-jdk protobuf-compiler xmlstarlet maven \
   \
-  # For Android armv7a 
+  # For Android armv7a
+  \ 
   libc6:i386 libncurses6:i386 libstdc++6:i386 g++-multilib libc6-dev-i386 \
-  libstdc++-13-dev:i386 \                     
+  libstdc++-13-dev:i386 \    
+  \
+  # For NDK LLDB debugger [libpython3.11.so.1.0	Необходимо доустановить через PPA]
+  \
+  libpython3.11 \                 
 && apt-get -y autoremove \
 && apt-get -y autoclean \
 && apt-get -y clean \
