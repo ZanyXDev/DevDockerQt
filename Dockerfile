@@ -148,7 +148,10 @@ RUN \
   \
   # For NDK LLDB debugger [libpython3.11.so.1.0	Необходимо доустановить через PPA]
   \
-  libpython3.11 \                 
+  libpython3.11 \ 
+  # For check network states inside container
+  \    
+  net-tools \           
 && apt-get -y autoremove \
 && apt-get -y autoclean \
 && apt-get -y clean \
