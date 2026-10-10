@@ -32,7 +32,7 @@ RUN \
 # Базовая сборка и утилиты
   build-essential cmake ninja-build git meld wget curl gdb ccache \
   flex bison gperf perl ruby zstd lzip \
-  tzdata locales sudo iputils-ping nano mc xclip \
+  tzdata locales sudo iputils-ping nano mc xclip rsync \
   \
   # сжатие данных (иногда используется в темах/иконках)
   liblzo2-2 \
@@ -98,6 +98,7 @@ RUN \
   libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libgstreamer-plugins-good1.0-dev \
   libavcodec-dev libavformat-dev libavutil-dev libswscale-dev libswresample-dev \
   libva-dev libvpx-dev libwebp-dev libwebpmux3 libjpeg-dev libpng-dev libtiff-dev \
+
   \
   # Шрифты, ввод, сеть, крипто, БД
   libfreetype-dev libfontconfig1-dev libharfbuzz-dev libicu-dev \
@@ -122,7 +123,11 @@ RUN \
   libepoxy-dev \
   \
   # PipeWire Современный аудио/видео бэкенд для Linux
+  pulseaudio-utils pipewire-alsa \
   libpipewire-0.3-dev libspa-0.2-dev \
+  \
+  # Установка плагина совместимости PipeWire
+  libasound2-plugins \  
   \
   # Libclang Интеграция с Qt Creator (Clangd, QML LSP)
   libclang-17-dev clangd\
@@ -228,6 +233,10 @@ fi
 
 #COPY --chown=${USER_ID}:${GROUP_ID} toolchain.cmake /opt/toolchain.cmake
 #add rsync dotless files after first run in /home/developer
+
+# Перенаправляем базовый ALSA на сокет PulseAudio/PipeWire
+RUN \
+   echo 'pcm.!default { type pulse fallback "sysdefault" }\nctl.!default { type pulse }' > /etc/asound.conf
 USER developer  
 
 WORKDIR /home/developer

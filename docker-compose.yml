@@ -9,15 +9,12 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1.0'
+          cpus: '2.0'
           memory: 4G
         reservations:
-          cpus: '0.5'
+          cpus: '1.5'
           memory: 2G
     user: "root:root"
-    dns:
-        - 8.8.8.8
-        - 8.8.4.4
     dns_search:
         - .
     build:                
@@ -66,24 +63,14 @@ services:
     #   - CAP_SYS_PTRACE
     cap_add:
       - SYS_PTRACE
-      - CAP_SYS_PTRACE
+      - CAP_SYS_PTRACE 
     deploy:
       resources:
         limits:
-          cpus: '2.50'
-          memory: 4G
-        reservations:
-          cpus: '2.0'
-    dns:
-      - 8.8.8.8
-      - 1.1.1.1   
-    deploy:
-      resources:
-        limits:
-          cpus: '1.75'
+          cpus: '2.75'
           memory: 6G
         reservations:
-          cpus: '0.75'
+          cpus: '1.75'
           memory: 2G
     group_add:
       - ${GROUP_ID}
@@ -93,8 +80,6 @@ services:
     dns:
         - 8.8.8.8
         - 8.8.4.4
-    dns_search:
-        - .
     build:                
       dockerfile: ./Dockerfile 
       args:   
@@ -108,9 +93,6 @@ services:
       - "4096:4096"
     environment:
       - TERM=xterm-256color
-      - XDG_RUNTIME_DIR=/tmp/runtime-developer
-      - PULSE_SERVER=unix:${XDG_RUNTIME_DIR}/pulse/native
-      - PULSE_COOKIE=/tmp/pulseaudio.cookie    
       - ANDROID_ADB_SERVER_ADDRESS=host.docker.internal
       - ADB_SERVER_SOCKET=tcp:host.docker.internal:5037
       - ANDROID_ADB_SERVER_PORT=5037 
@@ -119,14 +101,23 @@ services:
       - CCACHE_DIR=/ccache/${USER_ID:-1000}
       - CCACHE_TEMPDIR=/ccache/${USER_ID:-1000}/tmp
       - DISPLAY=:0  # явно задаём, чтобы переопределить Dockerfile ENV
-      - WORKSPACE_GID=1000  # Добавляем GID для workspace
-      - WORKSPACE_UMASK=0002  # Маска прав для новых файлов
+      # 1. Задаем базовую директорию рантайма
+      - XDG_RUNTIME_DIR=/tmp/runtime-developer   
+      # 2. Явно указываем путь к сокету для библиотек.
+      # Важно: он должен лежать строго внутри папки pulse/ внутри XDG_RUNTIME_DIR
+      - PULSE_SERVER=unix:/tmp/runtime-developer/pulse/native   
+      - PULSE_COOKIE=/tmp/pulseaudio.cookie   
+      - QT_MEDIA_BACKEND=ffmpeg
+      - AUDIO_DRIVERS=pulse 
     devices:
       - /dev/dri:/dev/dri
+      # РЕКОМЕНДУЕТСЯ ДОБАВИТЬ: прямой доступ к аудиокартам (для ALSA/PipeWire уровня ядра)
+      - /dev/snd:/dev/snd
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
-      - ${XDG_RUNTIME_DIR}/pulse/native:${XDG_RUNTIME_DIR}/pulse/native
+    # 3. Точное монтирование сокета хоста в ожидаемую структуру каталогов контейнера
+      - ${XDG_RUNTIME_DIR}/pulse/native:/tmp/runtime-developer/pulse/native          
       - ~/.config/pulse/cookie:/tmp/pulseaudio.cookie
       - /tmp/.X11-unix:/tmp/.X11-unix:ro  # явный проброс с ro-правами     
       - $XAUTH:/home/developer/.Xauthority
