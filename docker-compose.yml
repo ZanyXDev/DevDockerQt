@@ -33,7 +33,6 @@ services:
       - QTCREATOR_URL=${QTCREATOR_URL}  
       - CCACHE_DIR=/ccache
       - CCACHE_TEMPDIR=/ccache/tmp
-      #- TMPDIR=/tmp/build
       - CCACHE_DIRECT=true
       - CCACHE_INODECACHE=true
       - CCACHE_COMPILERCHECK=content
@@ -42,10 +41,6 @@ services:
       - src-volume:/usr/local/src
       - opt-volume:/opt
       - ccache-volume:/ccache
-      #- type: tmpfs
-      #  target: /tmp/build
-      #  tmpfs:
-      #    size: 4G  # Size in bytes (e.g., ~4GB)
     entrypoint: [] 
     command: ["sh", "-c", "chmod +x /root/init.sh; echo /root/init.sh"]       
     restart: "no"     
@@ -57,13 +52,10 @@ services:
     security_opt:
       - seccomp:unconfined
     # Часто ptrace требует и повышенных привилегий
-    # cap_add:
-    #   - SYS_PTRACE
-    # cap_add:
-    #   - CAP_SYS_PTRACE
     cap_add:
       - SYS_PTRACE
       - CAP_SYS_PTRACE 
+    network_mode: "host"
     deploy:
       resources:
         limits:
@@ -89,16 +81,11 @@ services:
         GROUP_ID: ${GROUP_ID}
         TZ: "Europe/Moscow"
     container_name: qtcreator-6.11-dev
-    ports:
-      - "4096:4096"
-       # Пробрасываем диапазон портов для ADB forward отладчика
-      - "8000-8100:8000-8100"
-      - "5038-5050:5038-5050"
-      - "43757:43757"
     environment:
       - TERM=xterm-256color
-      - ANDROID_ADB_SERVER_ADDRESS=host.docker.internal
-      - ADB_SERVER_SOCKET=tcp:host.docker.internal:5037
+      - QT_ANDROID_DEBUGGER_MAIN_THREAD_SLEEP_MS=10000
+      - ANDROID_ADB_SERVER_ADDRESS=127.0.0.1
+      - ADB_SERVER_SOCKET=tcp:127.0.0.1:5037
       - ANDROID_ADB_SERVER_PORT=5037 
       #- GPG_TTY=/dev/console
       #- GPG_TTY=$(tty)
@@ -117,8 +104,6 @@ services:
       - /dev/dri:/dev/dri
       # РЕКОМЕНДУЕТСЯ ДОБАВИТЬ: прямой доступ к аудиокартам (для ALSA/PipeWire уровня ядра)
       - /dev/snd:/dev/snd
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     volumes:
     # 3. Точное монтирование сокета хоста в ожидаемую структуру каталогов контейнера
       - ${XDG_RUNTIME_DIR}/pulse/native:/tmp/runtime-developer/pulse/native          
