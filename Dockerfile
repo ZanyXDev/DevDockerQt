@@ -36,7 +36,7 @@ RUN \
 # Базовая сборка и утилиты
   build-essential cmake ninja-build git meld wget curl gdb ccache \
   flex bison gperf perl ruby zstd lzip \
-  tzdata locales sudo iputils-ping nano mc xclip rsync \
+  tzdata locales sudo iputils-ping mc xclip rsync micro\
   \
   # сжатие данных (иногда используется в темах/иконках)
   liblzo2-2 \
