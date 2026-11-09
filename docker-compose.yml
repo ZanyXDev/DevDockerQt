@@ -15,8 +15,6 @@ services:
           cpus: '1.5'
           memory: 2G
     user: "root:root"
-    dns_search:
-        - .
     build:                
       dockerfile: ./Dockerfile 
       args:   
@@ -59,7 +57,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '2.75'
+          cpus: '2.5'
           memory: 6G
         reservations:
           cpus: '1.75'
@@ -114,7 +112,7 @@ services:
       - src-volume:/usr/local/src
       - opt-volume:/opt
       - ${HOMEAPP}:/home/developer
-      - share_workspace:/data/workspace
+      - share_workspace:/workspace
     stdin_open: true
     tty: true
     init: true  
