@@ -78,6 +78,10 @@ RUN \
   \
   # GTK и его окружение (ATK, GDK-Pixbuf, Epoxy, AT-SPI)
   # доступность (Accessibility): экранные лупы, дикторы (для незрячих)
+  # пакет разработчика GTK3 — libgtk-3-dev.
+  # libglib2.0-dev, так как Qt использует GLib для интеграции 
+  # с системным циклом событий (Event Loop) в GTK-окружениях.
+  libgtk-3-dev libglib2.0-dev \ 
   libatk1.0-dev gir1.2-atspi-2.0 \
   \
   # мост между ATK и AT-SPI, позволяет приложениям GTK общаться с менеджерами доступности (например, Orca)

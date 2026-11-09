@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+#docker compose run --rm --entrypoint /bin/bash init-setup
+
 export USER_ID=$(id -u)
 export GROUP_ID=$(id -g)
 export XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR

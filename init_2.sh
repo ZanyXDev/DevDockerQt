@@ -255,6 +255,7 @@ echo '🔨 Building Qt6 for amd64...'
 /usr/local/src/qt5/configure \
  -ccache \
  -prefix "/opt/qt/v${QT_VERSION}/gcc_64" \
+ -gtk \
  -release \
  -opensource \
  -confirm-license \
@@ -314,7 +315,7 @@ if [[ "$RUN_BUILD_ANDROID" = "1" ]]; then
     -DOPENSSL_LIBRARIES=/opt/android-sdk/android_openssl/ssl_3/arm64-v8a 
     
 #    cmake --build . --parallel $(($(nproc --ignore=1))) 
-    cmake --build .  --parallel 1
+    cmake --build .  --parallel 2
     cmake --install .
     cp config.summary /opt/qt/v${QT_VERSION}/android_arm64_v8a   
     

@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+START_TIME=$(date +%s)
+  rm -rf /tmp/build_qt5_amd64
+    mkdir -p /tmp/build_qt5_amd64
+    cd /tmp/build_qt5_amd64
+    # Unset ВСЕ переменные, связанные с кросс-компиляцией и путями Qt
+    unset QT_HOST_PATH
+    unset QT_PLUGIN_PATH
+    unset QML_IMPORT_PATH
+    unset QML2_IMPORT_PATH
+    unset ANDROID_NDK_ROOT
+    unset ANDROID_SDK_ROOT
+    unset ANDROID_HOME
+    unset ANDROID_API_VERSION
+    # (Опционально) Убрать Android из PATH, чтобы не подхватились инструменты
+    export PATH=$(echo "$PATH" | tr ':' '\n' | grep -v android | tr '\n' ':' | sed 's/:$//')
+  /usr/local/src/qt5/configure \
+ -ccache \
+ -prefix "/opt/qt/v${QT_VERSION}/gcc_64" \
+ -gtk \
+ -release \
+ -opensource \
+ -confirm-license \
+ -nomake examples \
+ -nomake tests \
+ -feature-openssl \
+ -skip qtcanvas3d -skip qtfeedback -skip qtgamepad -skip qtpim \
+ -skip qtsystems -skip qtwebglplugin -skip qtxmlpatterns -skip qtrepotools \
+ -skip qt3d -skip qtquick3d -skip qtwebengine -skip qtwebview \
+ -skip qtdoc -skip qttranslations -skip qtlottie -skip qtscxml \
+ -skip qtspeech -skip qtvirtualkeyboard -skip qtactiveqt  
+# Блок 1: База и графическое ядро
+cmake --build . --target qtbase -j2 && cmake --install . --component qtbase
+
+# Блок 2: Шейдеры и сетевые инструменты
+cmake --build . --target qtshadertools -j2 && cmake --install . --component qtshadertools
+cmake --build . --target qttools -j2 && cmake --install . --component qttools
+sleep 5
+# Блок 3: QML-стек (один из самых тяжелых блоков)
+cmake --build . --target qtdeclarative -j2 && cmake --install . --component qtdeclarative
+sleep 5
+# Блок 4: Дополнительные графические компоненты и форматы
+cmake --build . --target qtsvg -j2 && cmake --install . --component qtsvg
+cmake --build . --target qtimageformats -j2 && cmake --install . --component qtimageformats
+sleep 5
+# Блок 5: Системная интеграция и интерфейсы (D-Bus, Wayland)
+cmake --build . --target qtwayland -j2 && cmake --install . --component qtwayland
+cmake --build . --target qtconnectivity -j2 && cmake --install . --component qtconnectivity
+sleep 5
+# Блок 6: Финальный аккорд (Сборка всего оставшегося)
+# Так как все тяжелые модули уже скомпилированы и установлены выше, 
+# эта команда быстро «дособирает» мелкие оставшиеся модули.
+cmake --build . -j2
+
+cmake --install .
+
+cp config.summary /opt/qt/v${QT_VERSION}/gcc_64
+END_TIME=$(date +%s)
+echo "Build time: $((END_TIME - START_TIME)) seconds" > /opt/qt/v${QT_VERSION}/gcc_64/build.time.log
+ccache -s >> /opt/qt/v${QT_VERSION}/gcc_64/build.time.log
