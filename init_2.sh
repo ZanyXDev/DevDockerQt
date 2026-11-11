@@ -202,31 +202,7 @@ if [[ "$RUN_GIT_REPOS" = "1" ]]; then
         rm -rf /usr/local/src/qt5
         git clone --branch v"${QT_VERSION}" https://invent.kde.org/qt/qt/qt5.git /usr/local/src/qt5
     fi
-    cd /usr/local/src/qt5 \
-    && git submodule deinit -f --all \
-    && git config submodule.qtwebengine.active false \
-    && git config submodule.qtdoc.active false \
-    && git config submodule.qttranslations.active false \
-    && git config submodule.qtcanvas3d.active false \
-    && git config submodule.qtfeedback.active false \
-    && git config submodule.qtgamepad.active false \
-    && git config submodule.qtpim.active false \
-    && git config submodule.qtrepotools.active false \
-    && git config submodule.qtsystems.active false \
-    && git config submodule.qtwebglplugin.active false \
-    && git config submodule.qtxmlpatterns.active false \
-    && git config submodule.qttranslations.update none \
-    && git config submodule.qtdoc.update none \
-    && git config submodule.qtwebengine.update none \
-    && git config submodule.qtcanvas3d.update none \
-    && git config submodule.qtfeedback.update none \
-    && git config submodule.qtgamepad.update none \
-    && git config submodule.qtpim.update none \
-    && git config submodule.qtrepotools.update none \
-    && git config submodule.qtsystems.update none \
-    && git config submodule.qtwebglplugin.update none \
-    && git config submodule.qtxmlpatterns.update none 
-    git submodule update --init --recursive
+   
     echo '✅ Git stage complete.'
 else
     echo '⏭️  Skipping git clone (RUN_GIT_REPOS=0)'
@@ -252,24 +228,30 @@ echo '🔨 Building Qt6 for amd64...'
     export PATH=$(echo "$PATH" | tr ':' '\n' | grep -v android | tr '\n' ':' | sed 's/:$//')
     START_TIME=$(date +%s)
     # Run configure 
-/usr/local/src/qt5/configure \
- -ccache \
- -prefix "/opt/qt/v${QT_VERSION}/gcc_64" \
- -gtk \
- -release \
- -opensource \
- -confirm-license \
- -nomake examples \
- -nomake tests \
- -feature-openssl \
- -skip qtcanvas3d -skip qtfeedback -skip qtgamepad -skip qtpim \
- -skip qtsystems -skip qtwebglplugin -skip qtxmlpatterns -skip qtrepotools \
- -skip qt3d -skip qtquick3d -skip qtwebengine -skip qtwebview \
- -skip qtdoc -skip qttranslations -skip qtlottie -skip qtscxml \
- -skip qtspeech -skip qtvirtualkeyboard -skip qtactiveqt
-
-   # cmake --build . --parallel $(($(nproc --ignore=1))) 
-    cmake --build . -j1
+    # Флаги скорректированы под синтаксис Qt6
+    # Оставляем клонирование только супер-репозитория qt5, а затем на этапе сборки:
+    /usr/local/src/qt5/configure \    
+     -ccache \
+     -prefix "/opt/qt/v${QT_VERSION}/gcc_64" \
+     -release \
+     -opensource \
+     -confirm-license \
+     -nomake examples \
+     -nomake tests \
+     -openssl-runtime \
+     -DQT_FORCE_BUILD_TOOLS=ON \
+     -DCMAKE_CROSSCOMPILING=FALSE \
+     -init-submodules \
+     -submodules essential,qtsvg,qtcharts,qtimageformats,qtwebsockets,\
+     qthttpserver,qtnetworkauth,
+     qtgrpc,qtwebchannel,qtserialport,qtserialbus,qtconnectivity,qtpositioning,\
+     qtlocation,qtsensors,qtlanguageserver,qtscxml,qttools
+     
+ # Используем доступные процессоры с защитой от OOM
+    NPROC=$(nproc)
+    BUILD_JOBS=$(( NPROC > 4 ? 4 : NPROC )) # Ограничиваем до 4 параллельных потоков ради памяти
+    
+    cmake --build . --parallel $BUILD_JOBS
     cmake --install .
     cp config.summary /opt/qt/v${QT_VERSION}/gcc_64
     END_TIME=$(date +%s)
@@ -282,6 +264,7 @@ fi
 # 6. Сборка Qt6 для Android
 # ============================================================================
 if [[ "$RUN_BUILD_ANDROID" = "1" ]]; then
+ # флаг, разрешающий сетевые запросы для Gradle.  -DQT_ALLOW_DOWNLOAD=ON 
  # Unset ВСЕ переменные, связанные с кросс-компиляцией и путями Qt
     unset QT_HOST_PATH
     unset QT_PLUGIN_PATH
@@ -291,32 +274,39 @@ if [[ "$RUN_BUILD_ANDROID" = "1" ]]; then
     export ANDROID_HOME="/opt/android-sdk"
     export ANDROID_SDK_ROOT=/opt/android-sdk
     export ANDROID_NDK_ROOT=/opt/android-sdk/ndk/27.2.12479018
+    export OPENSSL_ROOT_DIR=/opt/android-sdk/android_openssl/ssl_3
     apt update
     apt install maven
     echo '🔨 Building Qt6 for android_arm64_v8a...'
     rm -rf /tmp/build_qt5_android_arm64_v8a
     mkdir -p /tmp/build_qt5_android_arm64_v8a
-    alias bundletool='java -jar /opt/bundletool-all-1.18.3.jar'
     cd /tmp/build_qt5_android_arm64_v8a
-    /usr/local/src/qt5/configure \
-    -verbose -release -nomake examples -nomake tests \
-    -prefix /opt/qt/v${QT_VERSION}/android_arm64_v8a \
-    -android-ndk $ANDROID_NDK_ROOT \
-    -android-sdk $ANDROID_SDK_ROOT \
-    -qt-host-path /opt/qt/v${QT_VERSION}/gcc_64 \
-    -android-abis arm64-v8a -- \
-    -skip qttasktree -skip qtpdf \
-    -skip qtcanvas3d -skip qtfeedback -skip qtgamepad -skip qtpim \
-    -skip qtsystems -skip qtwebglplugin -skip qtxmlpatterns -skip qtrepotools \
-    -skip qt3d -skip qtquick3d -skip qtwebengine -skip qtwebview \
-    -skip qtdoc -skip qttranslations -skip qtlottie -skip qtscxml \
-    -skip qtspeech -skip qtvirtualkeyboard -skip qtactiveqt \
-    -DOPENSSL_INCLUDE_DIR=/opt/android-sdk/android_openssl/ssl_3/include \
-    -DOPENSSL_LIBRARIES=/opt/android-sdk/android_openssl/ssl_3/arm64-v8a 
+  /usr/local/src/qt5/configure \
+      -verbose \
+      -release \
+      -nomake examples \
+      -nomake tests \
+      -prefix "/opt/qt/v${QT_VERSION}/android_arm64_v8a" \
+      -android-ndk "$ANDROID_NDK_ROOT" \
+      -android-sdk "$ANDROID_SDK_ROOT" \
+      -qt-host-path "/opt/qt/v${QT_VERSION}/gcc_64" \
+      -android-abis arm64-v8a \
+      -init-submodules \
+      -- \
+      -DQT_BUILD_SUBMODULES="qtbase;qtsvg;qtimageformats;qtconnectivity;qtpositioning;qtlocation;qtsensors" \
+      --module-subset=default,-qtrepotools \
+      -DQT_ALLOW_DOWNLOAD=ON \
+      -DQT_ANDROID_BUNDLETOOL_PATH=/opt/bundletool-all-1.18.3.jar \
+      -DOPENSSL_INCLUDE_DIR=/opt/android-sdk/android_openssl/ssl_3/include \
+      -DOPENSSL_LIBRARIES="/opt/android-sdk/android_openssl/ssl_3/arm64-v8a/libcrypto.so;/opt/android-sdk/android_openssl/ssl_3/arm64-v8a/libssl.so"
+
+ # Используем доступные процессоры с защитой от OOM
+    NPROC=$(nproc)
+    BUILD_JOBS=$(( NPROC > 4 ? 4 : NPROC )) # Ограничиваем до 4 параллельных потоков ради памяти
     
-#    cmake --build . --parallel $(($(nproc --ignore=1))) 
-    cmake --build .  --parallel 2
+    cmake --build . --parallel $BUILD_JOBS
     cmake --install .
+    
     cp config.summary /opt/qt/v${QT_VERSION}/android_arm64_v8a   
     
     echo '✅ Android build complete.'

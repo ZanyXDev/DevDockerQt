@@ -3,7 +3,7 @@ set -Eeuxo pipefail # https://vaneyckt.io/posts/safer_bash_scripts_with_set_euxo
 # Версии и пути
 CCACHE_DIR=/ccache
 
-QT_VERSION=6.11.0
+QT_VERSION=6.12.0
 # Образы и URL
 QTCREATOR_IMAGE_NAME=${USER}/qt6-19-21-36-27.2.12479018
 QTCREATOR_URL=https://github.com/qt-creator/qt-creator/releases/download/v20.0.2/qtcreator-linux-x64-20.0.2.deb

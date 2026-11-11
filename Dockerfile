@@ -176,7 +176,7 @@ ENV HOME=/home/developer
 ENV JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
 ENV JRE_CACERTS_PATH=/opt/java/openjdk/lib/security/cacerts
 ENV JAVA_VERSION="jdk-21.0.10"
-ENV OPENSSL_ROOT_DIR="/opt/android_openssl/ssl_1.1"
+ENV OPENSSL_ROOT_DIR="/opt/android-sdk/android_openssl/ssl_3"
 
 ENV ANDROID_HOME="/opt/android-sdk"
 ENV ANDROID_SDK_ROOT=/opt/android-sdk
