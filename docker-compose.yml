@@ -1,98 +1,131 @@
+name: devdockerqt6
 services:
-  qtcreator:   
-    image: ${QTCREATOR_IMAGE_NAME:-zanyxdev/5.15.8-qtcreator:v15.0.0}  
-    depends_on:
-      init-setup:
-        condition: service_completed_successfully   
-    build:                
-      context: .
-      args:   
-        # Используем переменные окружения хоста, которые нужно вычислить заранее
-        QT_VERSION: ${QT_VERSION_SHORT}
-        LANG: "ru-RU.UTF-8"
-        USER_ID: ${USER_ID}
-        GROUP_ID: ${GROUP_ID}
-        CMAKE_URL: ${CMAKE_URL}
-        QTCREATOR_URL: ${QTCREATOR_URL}    
-        CMDTOOLS_URL: ${CMDTOOLS_URL}
-    container_name: qtcreator-dev
-    environment:
-      - TERM=xterm-256color
-      - XDG_RUNTIME_DIR=/tmp/runtime-developer
-      #- XDG_RUNTIME_DIR=/run/user/${USER_ID:-1000}
-      - PULSE_SERVER=unix:${XDG_RUNTIME_DIR}/pulse/native
-      - PULSE_COOKIE=/tmp/pulseaudio.cookie
-      - XAUTHORITY=$XAUTH
-      - ANDROID_ADB_SERVER_ADDRESS=host.docker.internal
-      - ADB_SERVER_SOCKET=tcp:host.docker.internal:5037
-      - ANDROID_ADB_SERVER_PORT=5037 
-      - GPG_TTY=/dev/console
-      - CCACHE_DIR=/opt/ccache  
-      - CCACHE_TEMPDIR=/opt/ccache/tmp
-    devices:
-      - /dev/dri:/dev/dri
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    volumes:
-      - ${XDG_RUNTIME_DIR}/pulse/native:${XDG_RUNTIME_DIR}/pulse/native
-      - ~/.config/pulse/cookie:/tmp/pulseaudio.cookie
-      - $XSOCK:$XSOCK
-      - $XAUTH:$XAUTH
-      - src-volume:/usr/local/src
-      - opt-volume:/opt
-      - type: bind
-        source: $HOME/qtcreator-app
-        target: /home/developer    
-    stdin_open: true
-    tty: true
-    cap_add:
-      - SYS_PTRACE
-    security_opt:
-      - seccomp:unconfined
-    init: true  
-    command: bash 
-         
-  # Pre run setup (профиль "init")
+  # Pre run setup container
   init-setup:
-  # Используем тот же образ, что уже собран/скачан, 
-  # чтобы не собирать Dockerfile второй раз
-    image: ${QTCREATOR_IMAGE_NAME:-zanyxdev/5.15.8-qtcreator:v15.0.0}
+    image: ${QTCREATOR_IMAGE_NAME:-zanyxdev/qt6-19-21-36-27.2.12479018}
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
     deploy:
       resources:
         limits:
-          cpus: '2.75'
-          memory: 2048M
+<<<<<<< HEAD
+          cpus: '3.5'
+          memory: 6G
+=======
+          cpus: '2.0'
+          memory: 8G
+>>>>>>> d303d87 (home qt6.12.0)
         reservations:
-          cpus: '2.25'
-          memory: 1024M
+          cpus: '1.5'
+          memory: 4G
     user: "root:root"
     build:                
-      context: .
+      dockerfile: ./Dockerfile 
+      args:   
+        QT_VERSION: ${QT_VERSION}
+        LANG: "ru-RU.UTF-8"
+        USER_ID: ${USER_ID}
+        GROUP_ID: ${GROUP_ID}
+        TZ: "Europe/Moscow"       
     environment:
-        - QT_VERSION=${QT_VERSION}
-        - QT_VERSION_SHORT=${QT_VERSION_SHORT}
-        - USER_ID=${USER_ID}
-        - GROUP_ID=${GROUP_ID}
-        - LANG=ru-RU.UTF-8
-        - CMAKE_URL= ${CMAKE_URL}
-        - QTCREATOR_URL=${QTCREATOR_URL}    
-        - CMDTOOLS_URL=${CMDTOOLS_URL}     
-        - CCACHE_DIR="/ccache"       
+      - QT_VERSION=${QT_VERSION}
+      - USER_ID=${USER_ID}
+      - GROUP_ID=${GROUP_ID}
+      - LANG=ru-RU.UTF-8
+      - QTCREATOR_URL=${QTCREATOR_URL}  
+      - CCACHE_DIR=/ccache
+      - CCACHE_TEMPDIR=/ccache/tmp
+      - CCACHE_DIRECT=true
+      - CCACHE_INODECACHE=true
+      - CCACHE_COMPILERCHECK=content
     volumes:
-      - ${PWD}/init_second.sh:/root/init.sh 
+      - ${PWD}/init.sh:/root/init.sh 
       - src-volume:/usr/local/src
       - opt-volume:/opt
-      - ccache-volume:/ccache
-    #Checking git clone sources and pre build
-    entrypoint: []               # ← Ключевая строка: отключаем ENTRYPOINT образа
-    command: ["sh", "-c", "export QT_VERSION=${QT_VERSION}; chmod +x /root/init.sh; /root/init.sh"]       
-    # Гарантируем, что контейнер не будет перезапускаться после выполнения
-    restart: "no" 
+      - /ccache
+    entrypoint: [] 
+    command: ["sh", "-c", "chmod +x /root/init.sh; echo /root/init.sh"]       
+    restart: "no"     
+      
+# Main dev container
+  qtcreator:   
+    image: ${QTCREATOR_IMAGE_NAME:-zanyxdev/qt6-19-21-36-27.2.12479018} 
+    # Отключение ограничения ptrace
+    security_opt:
+      - seccomp:unconfined
+    # Часто ptrace требует и повышенных привилегий
+    cap_add:
+      - SYS_PTRACE
+      - CAP_SYS_PTRACE 
+    network_mode: "host"
+    deploy:
+      resources:
+        limits:
+          cpus: '3.5'
+          memory: 6G
+        reservations:
+          cpus: '2.0'
+          memory: 3G
+    group_add:
+      - ${GROUP_ID}
+    depends_on:
+      init-setup:
+        condition: service_completed_successfully   
+    dns:
+        - 8.8.8.8
+        - 8.8.4.4
+    build:                
+      dockerfile: ./Dockerfile 
+      args:   
+        QT_VERSION: ${QT_VERSION}
+        LANG: "ru-RU.UTF-8"
+        USER_ID: ${USER_ID}
+        GROUP_ID: ${GROUP_ID}
+        TZ: "Europe/Moscow"
+    container_name: qtcreator-6.12-dev
+    environment:
+      - TERM=xterm-256color
+      - QT_ANDROID_DEBUGGER_MAIN_THREAD_SLEEP_MS=10000
+      - ANDROID_ADB_SERVER_ADDRESS=127.0.0.1
+      - ADB_SERVER_SOCKET=tcp:127.0.0.1:5037
+      - ANDROID_ADB_SERVER_PORT=5037 
+      #- GPG_TTY=/dev/console
+      #- GPG_TTY=$(tty)
+      - CCACHE_DIR=/ccache
+      - CCACHE_TEMPDIR=/ccache/tmp
+      - DISPLAY=:0  # явно задаём, чтобы переопределить Dockerfile ENV
+      # 1. Задаем базовую директорию рантайма
+      - XDG_RUNTIME_DIR=/tmp/runtime-developer   
+      # 2. Явно указываем путь к сокету для библиотек.
+      # Важно: он должен лежать строго внутри папки pulse/ внутри XDG_RUNTIME_DIR
+      - PULSE_SERVER=unix:/tmp/runtime-developer/pulse/native   
+      - PULSE_COOKIE=/tmp/pulseaudio.cookie   
+      - QT_MEDIA_BACKEND=ffmpeg
+      - AUDIO_DRIVERS=pulse 
+    devices:
+      - /dev/dri:/dev/dri
+      # РЕКОМЕНДУЕТСЯ ДОБАВИТЬ: прямой доступ к аудиокартам (для ALSA/PipeWire уровня ядра)
+      - /dev/snd:/dev/snd
+    volumes:
+    # 3. Точное монтирование сокета хоста в ожидаемую структуру каталогов контейнера
+      - ${XDG_RUNTIME_DIR}/pulse/native:/tmp/runtime-developer/pulse/native          
+      - ~/.config/pulse/cookie:/tmp/pulseaudio.cookie
+      - /tmp/.X11-unix:/tmp/.X11-unix:ro  # явный проброс с ro-правами     
+      - $XAUTH:/home/developer/.Xauthority
+      - ccache-volume:/ccache      
+      - src-volume:/usr/local/src
+      - opt-volume:/opt
+      - ${HOMEAPP}:/home/developer      
+    stdin_open: true
+    tty: true
+    init: true  
+    command: bash          
+
 volumes:
   src-volume:
     name: ${SRC_VOLUME_NAME}
   opt-volume:
     name: ${OPT_VOLUME_NAME}
   ccache-volume:
-    name: ${CCACHE_VOLUME}  
-      
+    name: ${CCACHE_VOLUME}

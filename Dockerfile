@@ -1,161 +1,140 @@
-FROM ubuntu:22.04 
+FROM ubuntu:noble
 
-LABEL Description="This image based on Ubuntu 22.04,provides a base development \
-                   environment (Linux and Android) for Qt developers"
-# Declare build parameters.
+LABEL Description="Base development environment (Linux Desktop & Android 9+) for Qt 6.12.0"
+
 ARG QT_WEBKIT
 ARG QT_WEBENGINE
-ARG QT_VERSION
+ARG QT_VERSION=6.12.0
 ARG TARGETARCH
 ARG BUILD_TAG
 ARG QTCREATOR_URL
-ARG USER_ID
-ARG GROUP_ID
-ARG QTCREATOR_URL
-ARG TZ
-# Set environment variables, see Readme.md
-# Allow colored output on command line.
-ENV TERM=xterm-color  
-# +Timezone (если надо на этапе сборки)
-ENV TZ=Europe/Moscow
-# Add libusb dans library path
-ENV LD_LIBRARY_PATH=/usr/local/lib
-ENV xdg_runtime_dir=/run/user/"${USER_ID}"
-ENV DISPLAY=:0
-ENV PERSIST=1
-ENV DEBIAN_FRONTEND="noninteractive" 
-ENV PS1="\u@${BUILD_TAG}:\w\$ "
-ENV LANG=ru_RU.UTF-8
-ENV LANGUAGE=ru_RU:ru
-ENV LC_LANG=ru_RU.UTF-8
-ENV LC_ALL=ru_RU.UTF-8
-ENV HOME=/home/developer
+ARG USER_ID=1000
+ARG GROUP_ID=1000
+ARG TZ=Europe/Moscow
 
-#Troubleshooting
-#Enabling the logging categories under qt.qpa is a good idea in general. This will show some debug prints both from eglfs and the input handlers.
-#ENV QT_LOGGING_RULES=qt.qpa.*=true
+ENV LANG=C.UTF-8 \
+    LC_ALL=C.UTF-8 \
+    DEBIAN_FRONTEND=noninteractive
 
-ENV QT_HOST_PATH="/opt/Qt/${QT_VERSION}-amd64-lts-lgpl/:${QT_HOST_PATH}"
-ENV QT_HOST_PATH="/opt/Qt/${QT_VERSION}-android-lts-lgpl/:${QT_HOST_PATH}"
-ENV QT_PLUGIN_PATH="/opt/Qt/${QT_VERSION}-amd64-lts-lgpl/plugins:${QT_PLUGIN_PATH}"
-ENV QT_PLUGIN_PATH="/opt/Qt/${QT_VERSION}-android-lts-lgpl/plugins:${QT_PLUGIN_PATH}"
-ENV QML_IMPORT_PATH="/opt/Qt/${QT_VERSION}-amd64-lts-lgpl/qml:${QML_IMPORT_PATH}"
-ENV QML_IMPORT_PATH="/opt/Qt/${QT_VERSION}-android-lts-lgpl/qml:${QML_IMPORT_PATH}"
-ENV QML2_IMPORT_PATH="/opt/Qt/${QT_VERSION}-amd64-lts-lgpl/qml:${QML2_IMPORT_PATH}"
-ENV QML2_IMPORT_PATH="/opt/Qt/${QT_VERSION}-android-lts-lgpl/qml:${QML2_IMPORT_PATH}"
-ENV QT_QPA_FONTDIR="/usr/share/fonts/truetype"
+COPY sources.list_noble /etc/apt/sources.list.d/ubuntu.sources
 
-ENV OPENSSL_ROOT_DIR="/opt/android_openssl/ssl_1.1"
+# 1. Слой: Базовые инструменты сборки, отладки и Python
+RUN echo 'Acquire::Languages "none";' > /etc/apt/apt.conf.d/90nolanguages \
+ && echo 'APT::Get::Install-Recommends "false";' > /etc/apt/apt.conf.d/99nosuggest \
+ && echo 'APT::Get::Install-Suggests "false";' >> /etc/apt/apt.conf.d/99nosuggest \
+ && apt-get update && apt-get -y upgrade \
+ && apt-get install -y --no-install-recommends \
+    ssh-clients \
+    software-properties-common gnupg ca-certificates apt-transport-https \
+    build-essential cmake ninja-build git wget curl gdb lldb ccache \
+    flex bison gperf perl ruby zstd lzip autoconf libtool \
+    tzdata locales sudo iputils-ping mc xclip rsync micro \
+    cppcheck clang-format clang-tidy strace valgrind \
+    python3 python3-dev python3-pip python3-venv python3-html5lib \
+ && add-apt-repository -y ppa:deadsnakes/ppa \
+ && apt-get update \
+ && apt-get install -y --no-install-recommends libpython3.11 \
+ && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-ENV JAVA_HOME=/opt/java/openjdk
-ENV JRE_CACERTS_PATH=/opt/java/openjdk/lib/security/cacerts
-ENV JAVA_VERSION="jdk-17.0.13"
+# 2. Слой: Графический стек (X11, Wayland, OpenGL, Vulkan, PipeWire, Qt6 deps)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libx11-dev libx11-xcb-dev libxext-dev libxfixes-dev \
+    libxi-dev libxrender-dev libxrandr-dev libxcursor-dev \
+    libxcomposite-dev libxdamage-dev libxkbcommon-dev libxkbcommon-x11-dev \
+    libxft-dev libxinerama-dev libxtst-dev libxkbfile-dev \
+    libxcb1-dev libxcb-cursor0 libxcb-dri2-0-dev libxcb-glx0-dev \
+    libxcb-icccm4-dev libxcb-image0-dev libxcb-keysyms1-dev \
+    libxcb-randr0-dev libxcb-render0-dev libxcb-render-util0-dev \
+    libxcb-shape0-dev libxcb-shm0-dev libxcb-sync-dev \
+    libxcb-util-dev libxcb-xfixes0-dev libxcb-xinerama0-dev \
+    libxcb-xinput-dev libxcb-xkb-dev libxcb-xtest0-dev \
+    libwayland-dev wayland-protocols \
+    libegl1-mesa-dev libgles2-mesa-dev libgbm-dev libdrm-dev \
+    libgl1-mesa-dev libglu1-mesa-dev freeglut3-dev libepoxy-dev \
+    libvulkan-dev glslang-tools spirv-tools \
+    libcairo2-dev libpixman-1-dev libpango1.0-dev \
+    libgtk-3-dev libglib2.0-dev libatk1.0-dev libatk-bridge2.0-dev \
+    libatspi2.0-dev libgdk-pixbuf-2.0-dev \
+    libpulse-dev libasound2-dev libasound2-plugins \
+    pulseaudio-utils pipewire-alsa libpipewire-0.3-dev libspa-0.2-dev \
+    libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libgstreamer-plugins-good1.0-dev \
+    libavcodec-dev libavformat-dev libavutil-dev libswscale-dev libswresample-dev \
+    libva-dev libvpx-dev libwebp-dev libwebpmux3 libjpeg-dev libpng-dev libtiff-dev \
+    libfreetype-dev libfontconfig1-dev libharfbuzz-dev libicu-dev \
+    libdbus-1-dev libudev-dev libcap-dev libsystemd-dev \
+    libssl-dev libssl3 openssl libsqlite3-dev libnss3-dev libnspr4-dev \
+    default-libmysqlclient-dev libprotobuf-dev libprotoc-dev \
+    libdouble-conversion-dev libpcre2-dev libzstd-dev libb2-dev \
+    libminizip-dev libmng-dev libsctp-dev libsnappy-dev liblzo2-2 \
+ && apt-get clean && rm -rf /var/lib/apt/lists/* /usr/share/doc/* /usr/share/man/*
 
-ENV PATH="/opt/cmake/bin:${PATH}"
-ENV PATH="${JAVA_HOME}/bin:${PATH}"
-ENV PATH="/opt/Qt/${QT_VERSION}-amd64-lts-lgpl/bin:${PATH}"
-ENV PATH="/opt/Qt/${QT_VERSION}-android-lts-lgpl/bin:${PATH}"
-ENV PATH="/opt/qt-creator/bin:${PATH}"
-   
-ENV ANDROID_HOME="/opt/android-sdk"
-ENV ANDROID_SDK_ROOT="${ANDROID_HOME}"
-ENV ANDROID_NDK_ROOT="${ANDROID_HOME}/ndk/21.3.6528147"
-ENV ANDROID_NDK_PLATFORM=android-21
-ENV ANDROID_API_VERSION=android-30
-ENV ANDROID_BUILD_TOOLS_REVISION=30.0.3
+# 3. Слой: Зависимости для сборки Android (Java 21)
+RUN mkdir -p /usr/share/man/man1 \
+ && apt-get update && apt-get install -y --no-install-recommends \
+    openjdk-21-jdk-headless protobuf-compiler xmlstarlet maven \
+ && apt-get clean && rm -rf /var/lib/apt/lists/* /usr/share/doc/* /usr/share/man/*
 
-ENV QT_WEBKIT=${QT_WEBKIT:-"n"}
-ENV QT_WEBENGINE=${QT_WEBENGINE:-"n"}
+# Переменные окружения
+ENV TERM=xterm-color \
+    TZ=Europe/Moscow \
+    LD_LIBRARY_PATH=/usr/local/lib \
+    DISPLAY=:0 \
+    PERSIST=1 \
+    PS1="\u@${BUILD_TAG}:\w\$ " \
+    HOME=/home/developer \
+    XAUTHORITY=/home/developer/.Xauthority
 
+ENV JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 \
+    JRE_CACERTS_PATH=/opt/java/openjdk/lib/security/cacerts \
+    JAVA_VERSION="jdk-21.0.10" 
 
-RUN set -eux; \
-    export LANG=en_EN.UTF-8 ;\
-    echo "go-faster apt"; \
-    echo 'Acquire::Languages "none";' > /etc/apt/apt.conf.d/90nolanguages;\
-    echo 'APT::Get::Install-Recommends "false";'> /etc/apt/apt.conf.d/99nosuggest;\
-    echo 'APT::Get::Install-Suggests "false";' >> /etc/apt/apt.conf.d/99nosuggest;\
-    export DEBIAN_FRONTEND=noninteractive ;\
-    apt-get -y update  ;\
-    apt-get -y upgrade ;\
-    echo "Build essentials for ubuntu/debian" ;\
-    apt-get -y install build-essential perl python3 ccache ;\
-	echo "Ninja build tools"; \
-	apt-get install ninja-build ;\
-    echo "Other cpp tools"; \
-    apt-get install -y cppcheck graphviz doxygen git meld gdb lldb clang-format autoconf;\
-    echo "Other debug tools"; \
-    apt-get install -y strace;\    
-    echo "Memory leaks cpp tools"; \
-    apt-get install -y valgrind;\
-    echo "Fontconfig library"; \
-    apt-get install -y libfontconfig1-dev fontconfig;\   
-    echo "Crypto tools"; \
-    apt-get install -y apt-transport-https  ca-certificates gnupg libssl3 openssl ;\
-    echo "#Install some libs";\
-    apt-get install -y locales libncurses5 libdouble-conversion3 libc6 libc-bin libicu70  libtool xmlstarlet;\    
-    echo "Libxcb packets" ;\
-    apt-get -y install '^libxcb.*-dev' libx11-xcb-dev libglu1-mesa-dev libxrender-dev libxi-dev libxkbcommon-dev libxkbcommon-x11-dev \
-                        libxcb-xinerama0-dev libxcb-xinput-dev libxcb-xkb-dev libxkbfile-dev ;\
-    echo "Mesa-specific OpenGL extensions" ;\
-    apt-get -y install mesa-common-dev libgl1-mesa-dev ;\ 
-    echo "Qt Multimedia You'll need at least alsa-lib [>= 1.0.15] and gstreamer [>=0.10.24] with the base-plugins package."  ;\
-    apt-get -y install  pulseaudio libpulse-dev ; \    
-    apt-get -y install  libasound2-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libgstreamer-plugins-good1.0-dev libgstreamer-plugins-bad1.0-dev ;\
-    apt-get -y install  gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-libav ; \    
-    echo "QDoc Documentation Generator Tool Ubuntu/Debian " ;\
-    apt-get -y install clang libclang-dev ;\
-    if [ "$QT_WEBKIT" = "y" ]; then \
-      echo "Qt WebKit Ubuntu/Debian" >>/root/installed_deb.log;\	
-      apt-get -y install flex bison gperf libicu-dev libxslt-dev ruby; \
-    fi; \
-    if [ "$QT_WEBENGINE" = "y" ]; then \
-        echo "Qt WebEngine Ubuntu/Debian" ;\	
-        apt-get -y install libxcursor-dev libxcomposite-dev libxdamage-dev libxrandr-dev libxtst-dev libxss-dev libdbus-1-dev libevent-dev \
-	                   libcap-dev libpulse-dev libudev-dev libpci-dev libnss3-dev libasound2-dev libegl1-mesa-dev \
-			           gperf bison nodejs; \
-    fi; \   
-    echo "Auth Tool Ubuntu/Debian " ;\
-    apt-get -y install sudo nano mc ;\   
-    apt-get -y install wget unzip ;\ 
-    echo "Add small X11 tools Ubuntu/Debian " ;\
-    apt-get -y install xprintidle ;\      
-    echo "Install the BlueZ development headers and D-Bus development packages" ;\ 
-    apt-get install -y libbluetooth-dev bluez libdbus-1-dev ;\
-    apt-get clean -y && rm -rf /var/lib/apt/lists/*
+ENV OPENSSL_ROOT_DIR="/opt/android-sdk/android_openssl/ssl_3"
 
-#Чтобы внутри контейнера работал отладчик, добавил это, решение взял отсюда
-#https://askubuntu.com/questions/41629/after-upgrade-gdb-wont-attach-to-process
-#RUN echo 0 > /etc/sysctl.d/10-ptrace.conf
+ENV ANDROID_HOME="/opt/android-sdk" \
+    ANDROID_SDK_ROOT="/opt/android-sdk" \
+    ANDROID_NDK_ROOT="/opt/android-sdk/ndk/27.2.12479018" \
+    ANDROID_NDK_PLATFORM="android-28" \
+    ANDROID_API_VERSION="android-36" \
+    ANDROID_BUILD_TOOLS_REVISION="36.0.0"
 
-RUN echo "/usr/local/lib" >> /etc/ld.so.conf.d/x86_64-linux-gnu.conf  &&\
-    echo "/opt/Qt/${QT_VERSION}-amd64-lts-lgpl/lib" >> /etc/ld.so.conf.d/x86_64-linux-gnu.conf &&\
-    echo "/opt/Qt/${QT_VERSION}-android-lts-lgpl/lib" >> /etc/ld.so.conf.d/x86_64-linux-gnu.conf &&\
-    /sbin/ldconfig &&\
-    echo "Generate locale" &&\
-    sed -i -e 's/# ru_RU.UTF-8 UTF-8/ru_RU.UTF-8 UTF-8/' /etc/locale.gen &&\
-    locale-gen &&\
-    echo "Setup timezone" &&\
-    ln -snf /usr/share/zoneinfo/$TZ /etc/localtime &&\
-    echo $TZ > /etc/timezone &&\
-    if [ ${USER_ID:-0} -ne 0 ] && [ ${GROUP_ID:-0} -ne 0 ]; then \
-     echo "Create user developer ${USER_ID}:${GROUP_ID} " &&\
-      groupadd -g ${GROUP_ID} developer &&\
-      useradd -u ${USER_ID} -g ${GROUP_ID} developer &&\
-      install -d -m 0755 -o developer -g ${GROUP_ID} /home/developer &&\
-      adduser developer sudo &&\
-      echo "adding user developer to audio group" &&\
-      adduser developer audio &&\
-      echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers &&\
-      mkdir -p /home/developer &&\
-	  cp /etc/skel/.profile /etc/skel/.bashrc /home/developer &&\
-      chmod 644 /home/developer/.profile /home/developer/.bashrc  &&\
-      chown ${USER_ID}:${GROUP_ID} -R /home/developer &&\
-      echo "finished installing" ;\
+# Для CMake Qt6 QT_HOST_PATH должен указывать строго на десктопный Qt
+ENV QT_HOST_PATH="/opt/qt/v${QT_VERSION}/gcc_64" \
+    QT_PLUGIN_PATH="/opt/qt/v${QT_VERSION}/gcc_64/plugins" \
+    QML_IMPORT_PATH="/opt/qt/v${QT_VERSION}/gcc_64/qml" \
+    QML2_IMPORT_PATH="/opt/qt/v${QT_VERSION}/gcc_64/qml" \
+    QT_QPA_FONTDIR="/usr/share/fonts/truetype"
+
+ENV PATH="/opt/bin:/opt/qt-creator/bin:/opt/qt/v${QT_VERSION}/gcc_64/bin:/opt/qt/v${QT_VERSION}/android_arm64_v8a/bin:${JAVA_HOME}/bin:${PATH}"
+
+# Локали, таймзона, ccache и ldconfig
+RUN sed -i -e 's/# ru_RU.UTF-8 UTF-8/ru_RU.UTF-8 UTF-8/' /etc/locale.gen \
+ && sed -i -e 's/# en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen \
+ && locale-gen \
+ && update-locale LANG=ru_RU.UTF-8 LC_ALL=ru_RU.UTF-8 \
+ && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo ${TZ} > /etc/timezone \
+ && echo "/opt/qt/v${QT_VERSION}/gcc_64/lib" >> /etc/ld.so.conf.d/x86_64-linux-gnu.conf \
+ && echo "/opt/qt/v${QT_VERSION}/android_arm64_v8a/lib" >> /etc/ld.so.conf.d/x86_64-linux-gnu.conf \
+ && /sbin/ldconfig \
+ && printf 'pcm.!default { type pulse fallback "sysdefault" }\nctl.!default { type pulse }\n' > /etc/asound.conf
+
+ENV LANG=ru_RU.UTF-8 \
+    LC_ALL=ru_RU.UTF-8 \
+    CCACHE_MAXSIZE=20G \
+    CCACHE_COMPRESS=1 \
+    CCACHE_COMPRESSLEVEL=6
+
+# Создание пользователя developer
+RUN if [ ${USER_ID:-0} -ne 0 ] && [ ${GROUP_ID:-0} -ne 0 ]; then \
+        deluser --remove-home ubuntu || true; \
+        groupadd -g ${GROUP_ID} developer; \
+        useradd -u ${USER_ID} -g ${GROUP_ID} -m -s /bin/bash developer; \
+        usermod -aG sudo,audio developer; \
+        echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers; \
     fi
 
-COPY --from=eclipse-temurin:17 $JAVA_HOME $JAVA_HOME
-
-USER developer  
+USER developer
 WORKDIR /home/developer
-    
-ENTRYPOINT [ "/bin/bash", "-l", "-c" ]    
+
+ENTRYPOINT []
+CMD ["/bin/bash", "-l", "-i"]
+
