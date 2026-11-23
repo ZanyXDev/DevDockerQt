@@ -13,7 +13,7 @@ services:
           memory: 6G
         reservations:
           cpus: '1.5'
-          memory: 2G
+          memory: 4G
     user: "root:root"
     build:                
       dockerfile: ./Dockerfile 
@@ -35,7 +35,7 @@ services:
       - CCACHE_INODECACHE=true
       - CCACHE_COMPILERCHECK=content
     volumes:
-      - ${PWD}/init_2.sh:/root/init.sh 
+      - ${PWD}/init-v2.sh:/root/init.sh 
       - src-volume:/usr/local/src
       - opt-volume:/opt
       - ccache-volume:/ccache
@@ -112,7 +112,6 @@ services:
       - src-volume:/usr/local/src
       - opt-volume:/opt
       - ${HOMEAPP}:/home/developer
-      - share_workspace:/workspace
     stdin_open: true
     tty: true
     init: true  
@@ -125,6 +124,3 @@ volumes:
     name: ${OPT_VOLUME_NAME}
   ccache-volume:
     name: ${CCACHE_VOLUME}
-  share_workspace:
-    external: true
-    name: share_workspace 
