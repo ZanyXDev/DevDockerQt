@@ -3,9 +3,9 @@
 echo 1 | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo
 
 CONTAINER="fec71d79cbb5"
-HIGH_TEMP=90    # Температура постановки на паузу (°C)
-LOW_TEMP=75     # Температура возобновления работы (°C)
-INTERVAL=3      # Интервал проверки в секундах
+HIGH_TEMP=88    # Температура постановки на паузу (°C)
+LOW_TEMP=70     # Температура возобновления работы (°C)
+INTERVAL=4      # Интервал проверки в секундах
 
 PAUSED=0
 
