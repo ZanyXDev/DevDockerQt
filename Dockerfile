@@ -24,6 +24,7 @@ RUN echo 'Acquire::Languages "none";' > /etc/apt/apt.conf.d/90nolanguages \
  && echo 'APT::Get::Install-Suggests "false";' >> /etc/apt/apt.conf.d/99nosuggest \
  && apt-get update && apt-get -y upgrade \
  && apt-get install -y --no-install-recommends \
+    ssh-clients \
     software-properties-common gnupg ca-certificates apt-transport-https \
     build-essential cmake ninja-build git wget curl gdb lldb ccache \
     flex bison gperf perl ruby zstd lzip autoconf libtool \
@@ -72,7 +73,6 @@ RUN mkdir -p /usr/share/man/man1 \
  && apt-get update && apt-get install -y --no-install-recommends \
     openjdk-21-jdk-headless protobuf-compiler xmlstarlet maven \
  && apt-get clean && rm -rf /var/lib/apt/lists/* /usr/share/doc/* /usr/share/man/*
-
 
 # Переменные окружения
 ENV TERM=xterm-color \
