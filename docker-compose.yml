@@ -9,14 +9,9 @@ services:
     deploy:
       resources:
         limits:
-<<<<<<< HEAD
-          cpus: '3.5'
-          memory: 6G
-=======
           cpus: '2.0'
           memory: 8G
->>>>>>> d303d87 (home qt6.12.0)
-        reservations:
+      reservations:
           cpus: '1.5'
           memory: 4G
     user: "root:root"
