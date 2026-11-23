@@ -1,5 +1,5 @@
 1;2D#!/usr/bin/env bash
-set -eEuo pipefail
+set -eEuo
 
 # =============================================================================
 # 0. Интерактивное меню для выборочного запуска этапов
@@ -223,7 +223,7 @@ if [[ "$RUN_GIT_REPOS" = "1" ]]; then
         qtwebengine qtdoc qttranslations qtcanvas3d qtfeedback
         qtgamepad qtpim qtrepotools qtsystems qtwebglplugin
         qtxmlpatterns qt3d qtquick3d qtwebview qtlottie
-        qtscxml qtspeech qtvirtualkeyboard qtactiveqt
+        qtspeech qtvirtualkeyboard qtactiveqt
     )
     for mod in "${SKIP_SUBMODULES[@]}"; do
         git config "submodule.${mod}.active" false || true
@@ -265,7 +265,7 @@ if [[ "$RUN_BUILD_AMD64" = "1" ]]; then
         -skip qtcanvas3d -skip qtfeedback -skip qtgamepad -skip qtpim \
         -skip qtsystems -skip qtwebglplugin -skip qtxmlpatterns -skip qtrepotools \
         -skip qt3d -skip qtquick3d -skip qtwebengine -skip qtwebview \
-        -skip qtdoc -skip qttranslations -skip qtlottie -skip qtscxml \
+        -skip qtdoc -skip qttranslations -skip qtlottie \
         -skip qtspeech -skip qtvirtualkeyboard -skip qtactiveqt -skip qtquick3dphysics
 
     # Количество потоков ограничено (по умолчанию 2), чтобы не упереться в лимит RAM контейнера
@@ -312,11 +312,12 @@ if [[ "$RUN_BUILD_ANDROID" = "1" ]]; then
         -android-sdk "${ANDROID_SDK_ROOT}" \
         -qt-host-path "/opt/qt/v${QT_VERSION}/gcc_64" \
         -android-abis arm64-v8a -- \
+        -DQT_ALLOW_DOWNLOAD=ON \
         -skip qttasktree -skip qtpdf \
         -skip qtcanvas3d -skip qtfeedback -skip qtgamepad -skip qtpim \
         -skip qtsystems -skip qtwebglplugin -skip qtxmlpatterns -skip qtrepotools \
         -skip qt3d -skip qtquick3d -skip qtwebengine -skip qtwebview \
-        -skip qtdoc -skip qttranslations -skip qtlottie -skip qtscxml \
+        -skip qtdoc -skip qttranslations -skip qtlottie \
         -skip qtspeech -skip qtvirtualkeyboard -skip qtactiveqt \
         -skip qtquick3dphysics \
         -DOPENSSL_INCLUDE_DIR=/opt/android-sdk/android_openssl/ssl_3/include \
@@ -342,7 +343,7 @@ fi
 # =============================================================================
 if [[ "$RUN_FINALIZE" = "1" ]]; then
     echo '👤 Applying ownership permissions...'
-    chown -R "${USER_ID}:${GROUP_ID}" /opt "/ccache/${USER_ID}"
+    chown -R "${USER_ID}:${GROUP_ID}" /opt
     echo '🎉 Initialization & Build finished successfully.'
 else
     echo '⏭️  Skipping finalize (RUN_FINALIZE=0)'

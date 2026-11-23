@@ -40,7 +40,7 @@ services:
       - CCACHE_INODECACHE=true
       - CCACHE_COMPILERCHECK=content
     volumes:
-      - ${PWD}/init_2-v2.sh:/root/init.sh 
+      - ${PWD}/init.sh:/root/init.sh 
       - src-volume:/usr/local/src
       - opt-volume:/opt
       - /ccache
