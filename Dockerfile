@@ -24,7 +24,7 @@ RUN echo 'Acquire::Languages "none";' > /etc/apt/apt.conf.d/90nolanguages \
  && echo 'APT::Get::Install-Suggests "false";' >> /etc/apt/apt.conf.d/99nosuggest \
  && apt-get update && apt-get -y upgrade \
  && apt-get install -y --no-install-recommends \
-    ssh-clients \
+    openssh-client \
     software-properties-common gnupg ca-certificates apt-transport-https \
     build-essential cmake ninja-build git wget curl gdb lldb ccache \
     flex bison gperf perl ruby zstd lzip autoconf libtool \

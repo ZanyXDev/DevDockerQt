@@ -11,7 +11,7 @@ services:
         limits:
           cpus: '2.0'
           memory: 8G
-      reservations:
+        reservations:
           cpus: '1.5'
           memory: 4G
     user: "root:root"
