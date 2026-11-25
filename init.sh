@@ -117,8 +117,8 @@ if [[ "$RUN_SETUP_ENV" = "1" ]]; then
     export ANDROID_NDK_ROOT="/opt/android-sdk/ndk/27.2.12479018"
 
     # Синхронизированные пути ccache (совпадают с контейнером qtcreator)
-    export CCACHE_DIR="/ccache/${USER_ID}"
-    export CCACHE_TEMPDIR="/ccache/${USER_ID}/tmp"
+    export CCACHE_DIR="/ccache"
+    export CCACHE_TEMPDIR="/ccache/tmp"
     export CCACHE_MAXSIZE="20G"
     export CCACHE_COMPRESS="1"
     export CCACHE_COMPRESSLEVEL="6"
@@ -252,24 +252,42 @@ if [[ "$RUN_BUILD_AMD64" = "1" ]]; then
 ' ':' | sed 's/:$//')
 
     START_TIME=$(date +%s)
+    echo '📦 Installing Mold linker...'
+    apt-get update
+    apt-get install -y mold
+    
     /usr/local/src/qt5/configure \
-        -ccache \
-        -prefix "/opt/qt/v${QT_VERSION}/gcc_64" \
-        -gtk \
-        -release \
-        -opensource \
-        -confirm-license \
-        -nomake examples \
-        -nomake tests \
-        -feature-openssl \
-        -skip qtcanvas3d -skip qtfeedback -skip qtgamepad -skip qtpim \
-        -skip qtsystems -skip qtwebglplugin -skip qtxmlpatterns -skip qtrepotools \
-        -skip qt3d -skip qtquick3d -skip qtwebengine -skip qtwebview \
-        -skip qtdoc -skip qttranslations -skip qtlottie \
-        -skip qtspeech -skip qtvirtualkeyboard -skip qtactiveqt -skip qtquick3dphysics
+    -linker mold \
+    -prefix "/opt/qt/v${QT_VERSION}/gcc_64" \
+    -release \
+    -opensource \
+    -confirm-license \
+    -ccache \
+    -xcb \
+    -feature-gtk3 \
+    -openssl-linked \
+    -nomake examples \
+    -nomake tests \
+    -skip qtrepotools \
+    -skip qt3d \
+    -skip qtquick3d \
+    -skip qtquick3dphysics \
+    -skip qtwebengine \
+    -skip qtwebview \
+    -skip qtdoc \
+    -skip qttranslations \
+    -skip qtlottie \
+    -skip qtspeech \
+    -skip qtvirtualkeyboard -- \
+     -DCMAKE_JOB_POOLS="compile=3;link=2" \
+     -DCMAKE_JOB_POOL_COMPILE=compile \
+     -DCMAKE_JOB_POOL_LINK=link
+
 
     # Количество потоков ограничено (по умолчанию 2), чтобы не упереться в лимит RAM контейнера
-    BUILD_JOBS="${BUILD_JOBS:-2}"
+    #BUILD_JOBS="${BUILD_JOBS:-2}"
+    BUILD_JOBS="${BUILD_JOBS:-$(nproc --ignore=1)}"
+
     cmake --build . --parallel "${BUILD_JOBS}"
     cmake --install .
     cp config.summary "/opt/qt/v${QT_VERSION}/gcc_64/"
@@ -300,6 +318,9 @@ if [[ "$RUN_BUILD_ANDROID" = "1" ]]; then
     cd /tmp/build_qt5_android_arm64_v8a
 
     START_TIME=$(date +%s)
+    echo '📦 Installing Mold linker...'
+    apt-get update
+    apt-get install -y mold
     /usr/local/src/qt5/configure \
         -ccache \
         -release \
@@ -313,6 +334,9 @@ if [[ "$RUN_BUILD_ANDROID" = "1" ]]; then
         -qt-host-path "/opt/qt/v${QT_VERSION}/gcc_64" \
         -android-abis arm64-v8a -- \
         -DQT_ALLOW_DOWNLOAD=ON \
+        -DCMAKE_JOB_POOLS="compile=3;link=2" \
+        -DCMAKE_JOB_POOL_COMPILE=compile \
+        -DCMAKE_JOB_POOL_LINK=link
         -skip qttasktree -skip qtpdf \
         -skip qtcanvas3d -skip qtfeedback -skip qtgamepad -skip qtpim \
         -skip qtsystems -skip qtwebglplugin -skip qtxmlpatterns -skip qtrepotools \
@@ -323,7 +347,9 @@ if [[ "$RUN_BUILD_ANDROID" = "1" ]]; then
         -DOPENSSL_INCLUDE_DIR=/opt/android-sdk/android_openssl/ssl_3/include \
         -DOPENSSL_LIBRARIES=/opt/android-sdk/android_openssl/ssl_3/arm64-v8a
 
-    BUILD_JOBS="${BUILD_JOBS:-2}"
+    #BUILD_JOBS="${BUILD_JOBS:-2}"
+    BUILD_JOBS="${BUILD_JOBS:-$(nproc --ignore=1)}"
+
     cmake --build . --parallel "${BUILD_JOBS}"
     cmake --install .
     cp config.summary "/opt/qt/v${QT_VERSION}/android_arm64_v8a/"

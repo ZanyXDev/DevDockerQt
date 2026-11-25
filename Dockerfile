@@ -1,12 +1,11 @@
-FROM ubuntu:noble
+# ==============================================================================
+# ЭТАП 1: BUILDER (Полное окружение для компиляции Qt6 Desktop и Android)
+# ==============================================================================
+FROM ubuntu:noble AS builder
 
-LABEL Description="Base development environment (Linux Desktop & Android 9+) for Qt 6.12.0"
+LABEL Description="Builder stage for Qt 6.12.0 (Desktop & Android)"
 
-ARG QT_WEBKIT
-ARG QT_WEBENGINE
 ARG QT_VERSION=6.12.0
-ARG TARGETARCH
-ARG BUILD_TAG
 ARG QTCREATOR_URL
 ARG USER_ID=1000
 ARG GROUP_ID=1000
@@ -18,31 +17,30 @@ ENV LANG=C.UTF-8 \
 
 COPY sources.list_noble /etc/apt/sources.list.d/ubuntu.sources
 
-# 1. Слой: Базовые инструменты сборки, отладки и Python
+# 1. Базовые инструменты сборки и генераторы кода для Qt6
 RUN echo 'Acquire::Languages "none";' > /etc/apt/apt.conf.d/90nolanguages \
  && echo 'APT::Get::Install-Recommends "false";' > /etc/apt/apt.conf.d/99nosuggest \
  && echo 'APT::Get::Install-Suggests "false";' >> /etc/apt/apt.conf.d/99nosuggest \
+ && printf 'path-exclude=/usr/share/locale/*\npath-include=/usr/share/locale/ru*\npath-include=/usr/share/locale/en*\npath-include=/usr/share/locale/locale.alias\n' > /etc/dpkg/dpkg.cfg.d/01_nodoc \
  && apt-get update && apt-get -y upgrade \
  && apt-get install -y --no-install-recommends \
-    openssh-client \
     software-properties-common gnupg ca-certificates apt-transport-https \
-    build-essential cmake ninja-build git wget curl gdb lldb ccache \
+    build-essential cmake ninja-build git wget curl ccache pkg-config \
     flex bison gperf perl ruby zstd lzip autoconf libtool \
-    tzdata locales sudo iputils-ping mc xclip rsync micro \
-    cppcheck clang-format clang-tidy strace valgrind \
+    tzdata locales sudo rsync \
     python3 python3-dev python3-pip python3-venv python3-html5lib \
  && add-apt-repository -y ppa:deadsnakes/ppa \
  && apt-get update \
  && apt-get install -y --no-install-recommends libpython3.11 \
  && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# 2. Слой: Графический стек (X11, Wayland, OpenGL, Vulkan, PipeWire, Qt6 deps)
+# 2. Полный стек -dev зависимостей для сборки Qt6 (X11, Wayland, GTK3, FFmpeg, OpenGL, Vulkan)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libx11-dev libx11-xcb-dev libxext-dev libxfixes-dev \
     libxi-dev libxrender-dev libxrandr-dev libxcursor-dev \
     libxcomposite-dev libxdamage-dev libxkbcommon-dev libxkbcommon-x11-dev \
     libxft-dev libxinerama-dev libxtst-dev libxkbfile-dev \
-    libxcb1-dev libxcb-cursor0 libxcb-dri2-0-dev libxcb-glx0-dev \
+    libxcb1-dev libxcb-cursor0 libxcb-cursor-dev libxcb-dri2-0-dev libxcb-glx0-dev \
     libxcb-icccm4-dev libxcb-image0-dev libxcb-keysyms1-dev \
     libxcb-randr0-dev libxcb-render0-dev libxcb-render-util0-dev \
     libxcb-shape0-dev libxcb-shm0-dev libxcb-sync-dev \
@@ -68,11 +66,88 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libminizip-dev libmng-dev libsctp-dev libsnappy-dev liblzo2-2 \
  && apt-get clean && rm -rf /var/lib/apt/lists/* /usr/share/doc/* /usr/share/man/*
 
-# 3. Слой: Зависимости для сборки Android (Java 21)
+# 3. Java 21 для установки Android SDK/NDK в init.sh
 RUN mkdir -p /usr/share/man/man1 \
  && apt-get update && apt-get install -y --no-install-recommends \
     openjdk-21-jdk-headless protobuf-compiler xmlstarlet maven \
  && apt-get clean && rm -rf /var/lib/apt/lists/* /usr/share/doc/* /usr/share/man/*
+
+ENV JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 \
+    ANDROID_HOME="/opt/android-sdk" \
+    ANDROID_SDK_ROOT="/opt/android-sdk" \
+    ANDROID_NDK_ROOT="/opt/android-sdk/ndk/27.2.12479018"
+
+CMD ["/bin/bash"]
+
+
+# ==============================================================================
+# ЭТАП 2: RUNTIME / DEV-IDE (Облегчённый образ для Qt Creator и сборки проектов)
+# ==============================================================================
+FROM ubuntu:noble AS runtime
+
+LABEL Description="Lightweight Dev Environment (Qt Creator + Desktop & Android App Build) for Qt 6.12.0"
+
+ARG QT_VERSION=6.12.0
+ARG BUILD_TAG
+ARG USER_ID=1000
+ARG GROUP_ID=1000
+ARG TZ=Europe/Moscow
+
+ENV LANG=C.UTF-8 \
+    LC_ALL=C.UTF-8 \
+    DEBIAN_FRONTEND=noninteractive
+
+COPY sources.list_noble /etc/apt/sources.list.d/ubuntu.sources
+
+# 1. Инструменты разработки, отладки и сборки пользовательских C++ приложений
+RUN echo 'Acquire::Languages "none";' > /etc/apt/apt.conf.d/90nolanguages \
+ && echo 'APT::Get::Install-Recommends "false";' > /etc/apt/apt.conf.d/99nosuggest \
+ && echo 'APT::Get::Install-Suggests "false";' >> /etc/apt/apt.conf.d/99nosuggest \
+ && printf 'path-exclude=/usr/share/locale/*\npath-include=/usr/share/locale/ru*\npath-include=/usr/share/locale/en*\npath-include=/usr/share/locale/locale.alias\n' > /etc/dpkg/dpkg.cfg.d/01_nodoc \
+ && apt-get update && apt-get -y upgrade \
+ && apt-get install -y --no-install-recommends \
+    openssh-client ca-certificates gnupg curl wget \
+    build-essential cmake ninja-build git gdb lldb ccache pkg-config \
+    cppcheck clang-format clang-tidy strace \
+    tzdata locales sudo mc rsync micro \
+    python3 python3-pip python3-venv \
+ && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# 2. Минимальные -dev заголовки (нужны публичным заголовкам QtGui/OpenGL/Vulkan)
+#    + Runtime-библиотеки (без -dev) для работы плагинов собранного Qt6 и Qt Creator
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgl1-mesa-dev libegl1-mesa-dev libgles2-mesa-dev \
+    libx11-dev libxext-dev libxkbcommon-dev libvulkan-dev libssl-dev \
+    libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 \
+    libxcb-randr0 libxcb-render0 libxcb-render-util0 libxcb-shape0 \
+    libxcb-shm0 libxcb-sync1 libxcb-util1 libxcb-xfixes0 \
+    libxcb-xinerama0 libxcb-xinput0 libxcb-xkb1 libxcb-glx0 libxcb-dri2-0 \
+    libx11-xcb1 libxkbcommon-x11-0 libxcomposite1 libxdamage1 libxfixes3 \
+    libxi6 libxrandr2 libxrender1 libxcursor1 libxtst6 \
+    libwayland-client0 libwayland-cursor0 libwayland-egl1 \
+    libgtk-3-0t64 libglib2.0-0t64 libcairo2 libpango-1.0-0 libgdk-pixbuf-2.0-0 \
+    libatk1.0-0t64 libatk-bridge2.0-0t64 libatspi2.0-0t64 \
+    libfontconfig1 libfreetype6 libharfbuzz0b libicu74 \
+    libpulse0 pulseaudio-utils libasound2t64 libasound2-plugins pipewire-alsa \
+    libavcodec60 libavformat60 libavutil58 libswscale7 libswresample4 \
+    libgstreamer1.0-0 libgstreamer-plugins-base1.0-0 \
+    libdbus-1-3 libudev1 libssl3t64 openssl libsqlite3-0 libnss3 libnspr4 \
+    libdouble-conversion3 libpcre2-16-0 libzstd1 libb2-1 \
+    libjpeg8 libpng16-16t64 libtiff6 libwebp7 libwebpmux3 \
+ && apt-get clean && rm -rf /var/lib/apt/lists/* /usr/share/doc/* /usr/share/man/*
+
+# 3. Зависимости для сборки Android APK (Java 21)
+RUN mkdir -p /usr/share/man/man1 \
+ && apt-get update && apt-get install -y --no-install-recommends \
+    openjdk-21-jdk-headless xmlstarlet maven protobuf-compiler \
+ && apt-get clean && rm -rf /var/lib/apt/lists/* /usr/share/doc/* /usr/share/man/*
+
+# Примечание: Qt Creator ставится в init.sh через apt-get install /opt/download/qtcreator.deb.
+# Если вы хотите, чтобы Qt Creator был вшит в сам образ runtime, раскомментируйте блок ниже:
+# ARG QTCREATOR_URL
+# RUN wget -nv -O /tmp/qtcreator.deb "${QTCREATOR_URL}" \
+#  && apt-get update && apt-get install -y --no-install-recommends /tmp/qtcreator.deb \
+#  && rm -f /tmp/qtcreator.deb && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Переменные окружения
 ENV TERM=xterm-color \
@@ -86,7 +161,7 @@ ENV TERM=xterm-color \
 
 ENV JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 \
     JRE_CACERTS_PATH=/opt/java/openjdk/lib/security/cacerts \
-    JAVA_VERSION="jdk-21.0.10" 
+    JAVA_VERSION="jdk-21.0.10"
 
 ENV OPENSSL_ROOT_DIR="/opt/android-sdk/android_openssl/ssl_3"
 
@@ -97,7 +172,6 @@ ENV ANDROID_HOME="/opt/android-sdk" \
     ANDROID_API_VERSION="android-36" \
     ANDROID_BUILD_TOOLS_REVISION="36.0.0"
 
-# Для CMake Qt6 QT_HOST_PATH должен указывать строго на десктопный Qt
 ENV QT_HOST_PATH="/opt/qt/v${QT_VERSION}/gcc_64" \
     QT_PLUGIN_PATH="/opt/qt/v${QT_VERSION}/gcc_64/plugins" \
     QML_IMPORT_PATH="/opt/qt/v${QT_VERSION}/gcc_64/qml" \
@@ -106,10 +180,9 @@ ENV QT_HOST_PATH="/opt/qt/v${QT_VERSION}/gcc_64" \
 
 ENV PATH="/opt/bin:/opt/qt-creator/bin:/opt/qt/v${QT_VERSION}/gcc_64/bin:/opt/qt/v${QT_VERSION}/android_arm64_v8a/bin:${JAVA_HOME}/bin:${PATH}"
 
-# Локали, таймзона, ccache и ldconfig
-RUN sed -i -e 's/# ru_RU.UTF-8 UTF-8/ru_RU.UTF-8 UTF-8/' /etc/locale.gen \
- && sed -i -e 's/# en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen \
- && locale-gen \
+# Локали, таймзона и настройка динамического линковщика
+RUN printf "en_US.UTF-8 UTF-8\nru_RU.UTF-8 UTF-8\n" > /etc/locale.gen \
+ && locale-gen en_US.UTF-8 ru_RU.UTF-8 \
  && update-locale LANG=ru_RU.UTF-8 LC_ALL=ru_RU.UTF-8 \
  && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo ${TZ} > /etc/timezone \
  && echo "/opt/qt/v${QT_VERSION}/gcc_64/lib" >> /etc/ld.so.conf.d/x86_64-linux-gnu.conf \
@@ -137,4 +210,3 @@ WORKDIR /home/developer
 
 ENTRYPOINT []
 CMD ["/bin/bash", "-l", "-i"]
-

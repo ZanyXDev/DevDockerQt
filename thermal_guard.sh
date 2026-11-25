@@ -10,7 +10,7 @@ echo "grep \"docker-temp-guard\" /var/log/syslog"
 
 echo 1 | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo >/dev/null
 
-CONTAINER="9f8bcdf64237"
+CONTAINER="32535c2a246a"
 HIGH_TEMP=88    # Температура постановки на паузу (°C)
 LOW_TEMP=70     # Температура возобновления работы (°C)
 INTERVAL=4      # Интервал проверки в секундах
