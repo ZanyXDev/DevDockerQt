@@ -3,14 +3,16 @@ services:
   # Pre run setup container (uses builder stage with full Qt6 build deps)
   init-setup:
     image: ${QTCREATOR_IMAGE_NAME:-zanyxdev/qt6-19-21-36-27.2.12479018}-builder
+    profiles: ["build"]
     dns:
       - 8.8.8.8
       - 1.1.1.1
+    memswap_limit: 7.5G  
     deploy:
       resources:
         limits:
           cpus: '3.5'
-          memory: 8G
+          memory: 5.5G
         reservations:
           cpus: '2.5'
           memory: 4G
@@ -35,13 +37,17 @@ services:
       - CCACHE_DIRECT=true
       - CCACHE_INODECACHE=true
       - CCACHE_COMPILERCHECK=content
+      - CCACHE_UMASK=002
+      - BUILD_JOBS=2
     volumes:
       - ${PWD}/init.sh:/root/init.sh
       - src-volume:/usr/local/src
       - opt-volume:/opt
-      - /ccache
+      - ccache-volume:/ccache      
     entrypoint: []
-    command: ["sh", "-c", "chmod +x /root/init.sh; echo /root/init.sh"]
+    command: >
+      sh -c "chmod +x /root/init.sh && /root/init.sh &&
+      chown -R ${USER_ID}:${GROUP_ID} /ccache /opt /usr/local/src"
     restart: "no"
 
   # Main dev container (uses lightweight runtime stage)
@@ -63,9 +69,6 @@ services:
           memory: 3G
     group_add:
       - ${GROUP_ID}
-    depends_on:
-      init-setup:
-        condition: service_completed_successfully
     dns:
       - 8.8.8.8
       - 8.8.4.4
@@ -93,6 +96,7 @@ services:
       - PULSE_COOKIE=/tmp/pulseaudio.cookie
       - QT_MEDIA_BACKEND=ffmpeg
       - AUDIO_DRIVERS=pulse
+      - CCACHE_UMASK=002
     devices:
       - /dev/dri:/dev/dri
       - /dev/snd:/dev/snd

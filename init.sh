@@ -1,6 +1,13 @@
 1;2D#!/usr/bin/env bash
 set -eEuo
 
+# Функция гарантированной смены владельца при любом завершении скрипта
+fix_permissions() {
+    echo "Настройка прав доступа для ${USER_ID:-1000}:${GROUP_ID:-1000}..."
+    chown -R "${USER_ID:-1000}:${GROUP_ID:-1000}" /ccache /opt /usr/local/src 2>/dev/null || true
+}
+trap fix_permissions EXIT
+
 # =============================================================================
 # 0. Интерактивное меню для выборочного запуска этапов
 # =============================================================================
@@ -10,7 +17,6 @@ RUN_DOWNLOAD_DEPS="${RUN_DOWNLOAD_DEPS:-1}"
 RUN_GIT_REPOS="${RUN_GIT_REPOS:-1}"
 RUN_BUILD_AMD64="${RUN_BUILD_AMD64:-1}"
 RUN_BUILD_ANDROID="${RUN_BUILD_ANDROID:-1}"
-RUN_FINALIZE="${RUN_FINALIZE:-1}"
 
 show_menu() {
     echo ""
@@ -24,12 +30,11 @@ show_menu() {
     echo "  [3] Download Deps    : $([ "$RUN_DOWNLOAD_DEPS" = "1" ] && echo '✅' || echo '⏭️')"
     echo "  [4] Git Repos        : $([ "$RUN_GIT_REPOS" = "1" ] && echo '✅' || echo '⏭️')"
     echo "  [5] Build AMD64      : $([ "$RUN_BUILD_AMD64" = "1" ] && echo '✅' || echo '⏭️')"
-    echo "  [6] Build Android    : $([ "$RUN_BUILD_ANDROID" = "1" ] && echo '✅' || echo '⏭️')"
-    echo "  [7] Finalize         : $([ "$RUN_FINALIZE" = "1" ] && echo '✅' || echo '⏭️')"
+    echo "  [6] Build Android    : $([ "$RUN_BUILD_ANDROID" = "1" ] && echo '✅' || echo '⏭️')"    
     echo ""
     echo "  [A] Все этапы (по умолчанию)"
     echo "  [N] Ничего не делать (только показать меню)"
-    echo "  [0] Выход"
+    echo "  [0] Запуск"
     echo ""
     echo "💡 Подсказка: введите номер этапа для переключения (✅/⏭️),"
     echo "   или 'A' для выбора всех, '0' для запуска."
@@ -59,10 +64,9 @@ if [[ "${1:-}" == "--menu" ]]; then
             4) toggle_stage "GIT_REPOS" ;;
             5) toggle_stage "BUILD_AMD64" ;;
             6) toggle_stage "BUILD_ANDROID" ;;
-            7) toggle_stage "FINALIZE" ;;
             [Aa]) 
                 export RUN_SETUP_ENV=1 RUN_CREATE_DIRS=1 RUN_DOWNLOAD_DEPS=1
-                export RUN_GIT_REPOS=1 RUN_BUILD_AMD64=1 RUN_BUILD_ANDROID=1 RUN_FINALIZE=1
+                export RUN_GIT_REPOS=1 RUN_BUILD_AMD64=1 RUN_BUILD_ANDROID=1 
                 echo "✅ Все этапы включены"
                 ;;
             [Nn])
@@ -86,12 +90,11 @@ elif [[ "${1:-}" == "--help" ]]; then
 fi
 
 case "${1:-}" in
-    dirs)          export RUN_SETUP_ENV=0 RUN_DOWNLOAD_DEPS=0 RUN_GIT_REPOS=0 RUN_BUILD_AMD64=0 RUN_BUILD_ANDROID=0 RUN_FINALIZE=0 ;;
-    download)      export RUN_SETUP_ENV=0 RUN_CREATE_DIRS=0 RUN_GIT_REPOS=0 RUN_BUILD_AMD64=0 RUN_BUILD_ANDROID=0 RUN_FINALIZE=0 ;;
-    git)           export RUN_SETUP_ENV=0 RUN_CREATE_DIRS=0 RUN_DOWNLOAD_DEPS=0 RUN_BUILD_AMD64=0 RUN_BUILD_ANDROID=0 RUN_FINALIZE=0 ;;
-    build_amd64)   export RUN_SETUP_ENV=0 RUN_CREATE_DIRS=0 RUN_DOWNLOAD_DEPS=0 RUN_GIT_REPOS=0 RUN_BUILD_ANDROID=0 RUN_FINALIZE=0 ;;
-    build_android) export RUN_SETUP_ENV=0 RUN_CREATE_DIRS=0 RUN_DOWNLOAD_DEPS=0 RUN_GIT_REPOS=0 RUN_BUILD_AMD64=0 RUN_FINALIZE=0 ;;
-    finalize)      export RUN_SETUP_ENV=0 RUN_CREATE_DIRS=0 RUN_DOWNLOAD_DEPS=0 RUN_GIT_REPOS=0 RUN_BUILD_AMD64=0 RUN_BUILD_ANDROID=0 ;;
+    dirs)          export RUN_SETUP_ENV=0 RUN_DOWNLOAD_DEPS=0 RUN_GIT_REPOS=0 RUN_BUILD_AMD64=0 RUN_BUILD_ANDROID=0  ;;
+    download)      export RUN_SETUP_ENV=0 RUN_CREATE_DIRS=0 RUN_GIT_REPOS=0 RUN_BUILD_AMD64=0 RUN_BUILD_ANDROID=0  ;;
+    git)           export RUN_SETUP_ENV=0 RUN_CREATE_DIRS=0 RUN_DOWNLOAD_DEPS=0 RUN_BUILD_AMD64=0 RUN_BUILD_ANDROID=0  ;;
+    build_amd64)   export RUN_SETUP_ENV=0 RUN_CREATE_DIRS=0 RUN_DOWNLOAD_DEPS=0 RUN_GIT_REPOS=0 RUN_BUILD_ANDROID=0  ;;
+    build_android) export RUN_SETUP_ENV=0 RUN_CREATE_DIRS=0 RUN_DOWNLOAD_DEPS=0 RUN_GIT_REPOS=0 RUN_BUILD_AMD64=0 ;;
 esac
 
 # =============================================================================
@@ -278,23 +281,25 @@ if [[ "$RUN_BUILD_AMD64" = "1" ]]; then
     -skip qttranslations \
     -skip qtlottie \
     -skip qtspeech \
-    -skip qtvirtualkeyboard -- \
-     -DCMAKE_JOB_POOLS="compile=3;link=2" \
-     -DCMAKE_JOB_POOL_COMPILE=compile \
-     -DCMAKE_JOB_POOL_LINK=link
+    -skip qtvirtualkeyboard \
+    -- \
+    -DCMAKE_JOB_POOLS="compile=3;link=2" \
+    -DCMAKE_JOB_POOL_COMPILE=compile \
+    -DCMAKE_JOB_POOL_LINK=link \
+    -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=mold" \
+    -DCMAKE_SHARED_LINKER_FLAGS="-fuse-ld=mold" \ 
 
 
     # Количество потоков ограничено (по умолчанию 2), чтобы не упереться в лимит RAM контейнера
-    #BUILD_JOBS="${BUILD_JOBS:-2}"
     BUILD_JOBS="${BUILD_JOBS:-$(nproc --ignore=1)}"
 
     cmake --build . --parallel "${BUILD_JOBS}"
     cmake --install .
     cp config.summary "/opt/qt/v${QT_VERSION}/gcc_64/"
-
-    cd /
+    
+    # Очищаем временные файлы сборки после успешной установки в /opt
     rm -rf /tmp/build_qt5_amd64
-
+    
     END_TIME=$(date +%s)
     echo "Build time: $((END_TIME - START_TIME)) seconds" > "/opt/qt/v${QT_VERSION}/gcc_64/build.time.log"
     echo '✅ amd64 build complete.'
@@ -319,42 +324,43 @@ if [[ "$RUN_BUILD_ANDROID" = "1" ]]; then
 
     START_TIME=$(date +%s)
     echo '📦 Installing Mold linker...'
-    apt-get update
-    apt-get install -y mold
     /usr/local/src/qt5/configure \
-        -ccache \
-        -release \
-        -opensource \
-        -confirm-license \
-        -nomake examples \
-        -nomake tests \
-        -prefix "/opt/qt/v${QT_VERSION}/android_arm64_v8a" \
-        -android-ndk "${ANDROID_NDK_ROOT}" \
-        -android-sdk "${ANDROID_SDK_ROOT}" \
-        -qt-host-path "/opt/qt/v${QT_VERSION}/gcc_64" \
-        -skip qttasktree -skip qtpdf \
-        -skip qtcanvas3d -skip qtfeedback -skip qtgamepad -skip qtpim \
-        -skip qtsystems -skip qtwebglplugin -skip qtxmlpatterns -skip qtrepotools \
-        -skip qt3d -skip qtquick3d -skip qtwebengine -skip qtwebview \
-        -skip qtdoc -skip qttranslations -skip qtlottie \
-        -skip qtspeech -skip qtvirtualkeyboard -skip qtactiveqt \
-        -skip qtquick3dphysics \        
-        -android-abis arm64-v8a -- \
-        -DQT_ALLOW_DOWNLOAD=ON \
-        -DCMAKE_JOB_POOLS="compile=3;link=2" \
-        -DCMAKE_JOB_POOL_COMPILE=compile \
-        -DCMAKE_JOB_POOL_LINK=link \        
-        -DOPENSSL_INCLUDE_DIR=/opt/android-sdk/android_openssl/ssl_3/include \
-        -DOPENSSL_LIBRARIES=/opt/android-sdk/android_openssl/ssl_3/arm64-v8a
+    -ccache \
+    -release \
+    -opensource \
+    -confirm-license \
+    -nomake examples \
+    -nomake tests \
+    -prefix "/opt/qt/v${QT_VERSION}/android_arm64_v8a" \
+    -android-ndk "${ANDROID_NDK_ROOT}" \
+    -android-sdk "${ANDROID_SDK_ROOT}" \
+    -qt-host-path "/opt/qt/v${QT_VERSION}/gcc_64" \
+    -skip qttasktree -skip qtpdf \
+    -skip qtcanvas3d -skip qtfeedback -skip qtgamepad -skip qtpim \
+    -skip qtsystems -skip qtwebglplugin -skip qtxmlpatterns -skip qtrepotools \
+    -skip qt3d -skip qtquick3d -skip qtwebengine -skip qtwebview \
+    -skip qtdoc -skip qttranslations -skip qtlottie \
+    -skip qtspeech -skip qtvirtualkeyboard -skip qtactiveqt \
+    -skip qtquick3dphysics \
+    -android-abis arm64-v8a \
+    -- \
+    -DQT_ALLOW_DOWNLOAD=ON \
+    -DCMAKE_JOB_POOLS="compile=3;link=2" \
+    -DCMAKE_JOB_POOL_COMPILE=compile \
+    -DCMAKE_JOB_POOL_LINK=link \
+    -DOPENSSL_ROOT_DIR=/opt/android-sdk/android_openssl/ssl_3 \
+    -DOPENSSL_INCLUDE_DIR=/opt/android-sdk/android_openssl/ssl_3/include \
+    -DOPENSSL_CRYPTO_LIBRARY=/opt/android-sdk/android_openssl/ssl_3/arm64-v8a/libcrypto_3.so \
+    -DOPENSSL_SSL_LIBRARY=/opt/android-sdk/android_openssl/ssl_3/arm64-v8a/libssl_3.so
 
-    #BUILD_JOBS="${BUILD_JOBS:-2}"
+
     BUILD_JOBS="${BUILD_JOBS:-$(nproc --ignore=1)}"
 
     cmake --build . --parallel "${BUILD_JOBS}"
     cmake --install .
     cp config.summary "/opt/qt/v${QT_VERSION}/android_arm64_v8a/"
 
-    cd /
+    # Очищаем временные файлы сборки после успешной установки в /opt
     rm -rf /tmp/build_qt5_android_arm64_v8a
 
     END_TIME=$(date +%s)
@@ -364,13 +370,4 @@ else
     echo '⏭️  Skipping android_arm64_v8a build (RUN_BUILD_ANDROID=0)'
 fi
 
-# =============================================================================
-# 7. Финализация
-# =============================================================================
-if [[ "$RUN_FINALIZE" = "1" ]]; then
-    echo '👤 Applying ownership permissions...'
-    chown -R "${USER_ID}:${GROUP_ID}" /opt
-    echo '🎉 Initialization & Build finished successfully.'
-else
-    echo '⏭️  Skipping finalize (RUN_FINALIZE=0)'
-fi
+
