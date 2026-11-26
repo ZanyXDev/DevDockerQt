@@ -134,6 +134,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libdbus-1-3 libudev1 libssl3t64 openssl libsqlite3-0 libnss3 libnspr4 \
     libdouble-conversion3 libpcre2-16-0 libzstd1 libb2-1 \
     libjpeg8 libpng16-16t64 libtiff6 libwebp7 libwebpmux3 \
+    libice6 libsm6 \
  && apt-get clean && rm -rf /var/lib/apt/lists/* /usr/share/doc/* /usr/share/man/*
 
 # 3. Зависимости для сборки Android APK (Java 21)
