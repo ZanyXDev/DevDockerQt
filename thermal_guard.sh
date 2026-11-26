@@ -142,7 +142,7 @@ while true; do
     TEMP=$(sensors | awk '/Package id 0:/ {gsub(/\+|\..*/, "", $4); print $4}')
     
     # 2. Общая загрузка CPU и iowait (wa)
-    CPU_STATS=$(top -bn1 | awk '/Cpu\(s\)/ {printf "%.1f %.1f", 100 - $8, $10}')
+    CPU_STATS=$(LC_ALL=C top -bn1 | awk '/Cpu\(s\)/ {printf "%.1f %.1f", 100 - $8, $10}')
     LOAD=$(echo "$CPU_STATS" | awk '{print $1}')
     IOWAIT=$(echo "$CPU_STATS" | awk '{print $2}')
 

@@ -1,4 +1,4 @@
-1;2D#!/usr/bin/env bash
+#!/usr/bin/env bash
 set -eEuo
 
 # Функция гарантированной смены владельца при любом завершении скрипта
@@ -7,6 +7,35 @@ fix_permissions() {
     chown -R "${USER_ID:-1000}:${GROUP_ID:-1000}" /ccache /opt /usr/local/src 2>/dev/null || true
 }
 trap fix_permissions EXIT
+# Единый список отключаемых модулей для Git, AMD64 и Android
+DISABLED_MODULES=(
+    qtactiveqt
+    qt3d
+    qtquick3d
+    qtquick3dphysics
+    qtcharts
+    qtdatavis3d
+    qtgraphs
+    qtdoc
+    qttranslations
+    qtrepotools
+    qtqa
+    qtwebengine
+    qtwebview
+    qtlottie
+    qtspeech
+    qtvirtualkeyboard
+    qtpdf
+    qttasktree
+    qtserialport
+    qtserialbus
+    qtnfc
+    qtquicktimeline
+    qtcoap
+    qtmqtt
+    qtopcua
+    qtgrpc
+)
 
 # =============================================================================
 # 0. Интерактивное меню для выборочного запуска этапов
@@ -222,13 +251,7 @@ if [[ "$RUN_GIT_REPOS" = "1" ]]; then
     cd /usr/local/src/qt5
     git submodule deinit -f --all || true
 
-    SKIP_SUBMODULES=(
-        qtwebengine qtdoc qttranslations qtcanvas3d qtfeedback
-        qtgamepad qtpim qtrepotools qtsystems qtwebglplugin
-        qtxmlpatterns qt3d qtquick3d qtwebview qtlottie
-        qtspeech qtvirtualkeyboard qtactiveqt
-    )
-    for mod in "${SKIP_SUBMODULES[@]}"; do
+   for mod in "${DISABLED_MODULES[@]}"; do
         git config "submodule.${mod}.active" false || true
         git config "submodule.${mod}.update" none || true
     done
@@ -250,14 +273,16 @@ if [[ "$RUN_BUILD_AMD64" = "1" ]]; then
 
     unset QT_HOST_PATH QT_PLUGIN_PATH QML_IMPORT_PATH QML2_IMPORT_PATH
     unset ANDROID_NDK_ROOT ANDROID_SDK_ROOT ANDROID_HOME ANDROID_API_VERSION
-    export PATH=$(echo "$PATH" | tr ':' '
-' | grep -v android | tr '
-' ':' | sed 's/:$//')
+    export PATH=$(echo "$PATH" | tr ':' '\n' | grep -v android | tr '\n' ':' | sed 's/:$//')
 
     START_TIME=$(date +%s)
     echo '📦 Installing Mold linker...'
     apt-get update
     apt-get install -y mold
+    SKIP_FLAGS=()
+    for mod in "${DISABLED_MODULES[@]}"; do
+        SKIP_FLAGS+=("-skip" "$mod")
+    done
     
     /usr/local/src/qt5/configure \
     -linker mold \
@@ -271,24 +296,13 @@ if [[ "$RUN_BUILD_AMD64" = "1" ]]; then
     -openssl-linked \
     -nomake examples \
     -nomake tests \
-    -skip qtrepotools \
-    -skip qt3d \
-    -skip qtquick3d \
-    -skip qtquick3dphysics \
-    -skip qtwebengine \
-    -skip qtwebview \
-    -skip qtdoc \
-    -skip qttranslations \
-    -skip qtlottie \
-    -skip qtspeech \
-    -skip qtvirtualkeyboard \
+    "${SKIP_FLAGS[@]}" \
     -- \
-    -DCMAKE_JOB_POOLS="compile=3;link=2" \
+    -DCMAKE_JOB_POOLS="compile=2;link=1" \
     -DCMAKE_JOB_POOL_COMPILE=compile \
     -DCMAKE_JOB_POOL_LINK=link \
     -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=mold" \
-    -DCMAKE_SHARED_LINKER_FLAGS="-fuse-ld=mold" \ 
-
+    -DCMAKE_SHARED_LINKER_FLAGS="-fuse-ld=mold" 
 
     # Количество потоков ограничено (по умолчанию 2), чтобы не упереться в лимит RAM контейнера
     BUILD_JOBS="${BUILD_JOBS:-$(nproc --ignore=1)}"
@@ -323,7 +337,11 @@ if [[ "$RUN_BUILD_ANDROID" = "1" ]]; then
     cd /tmp/build_qt5_android_arm64_v8a
 
     START_TIME=$(date +%s)
-    echo '📦 Installing Mold linker...'
+    SKIP_FLAGS=()
+    for mod in "${DISABLED_MODULES[@]}"; do
+        SKIP_FLAGS+=("-skip" "$mod")
+    done
+    
     /usr/local/src/qt5/configure \
     -ccache \
     -release \
@@ -335,17 +353,12 @@ if [[ "$RUN_BUILD_ANDROID" = "1" ]]; then
     -android-ndk "${ANDROID_NDK_ROOT}" \
     -android-sdk "${ANDROID_SDK_ROOT}" \
     -qt-host-path "/opt/qt/v${QT_VERSION}/gcc_64" \
-    -skip qttasktree -skip qtpdf \
-    -skip qtcanvas3d -skip qtfeedback -skip qtgamepad -skip qtpim \
-    -skip qtsystems -skip qtwebglplugin -skip qtxmlpatterns -skip qtrepotools \
-    -skip qt3d -skip qtquick3d -skip qtwebengine -skip qtwebview \
-    -skip qtdoc -skip qttranslations -skip qtlottie \
-    -skip qtspeech -skip qtvirtualkeyboard -skip qtactiveqt \
-    -skip qtquick3dphysics \
+    -skip qttools \
+    "${SKIP_FLAGS[@]}" \
     -android-abis arm64-v8a \
     -- \
     -DQT_ALLOW_DOWNLOAD=ON \
-    -DCMAKE_JOB_POOLS="compile=3;link=2" \
+    -DCMAKE_JOB_POOLS="compile=2;link=1" \
     -DCMAKE_JOB_POOL_COMPILE=compile \
     -DCMAKE_JOB_POOL_LINK=link \
     -DOPENSSL_ROOT_DIR=/opt/android-sdk/android_openssl/ssl_3 \

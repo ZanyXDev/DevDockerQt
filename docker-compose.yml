@@ -7,12 +7,15 @@ services:
     dns:
       - 8.8.8.8
       - 1.1.1.1
-    memswap_limit: 7.5G  
     deploy:
-        cpus: 2.0
-        mem_limit: 8g
-        mem_reservation: 4g
-        memswap_limit: 16g
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 12G
+        reservations:
+          memory: 2G
+    # memswap_limit задается на корневом уровне сервиса
+    memswap_limit: 16g
     user: "root:root"
     build:
       dockerfile: ./Dockerfile
