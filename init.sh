@@ -332,18 +332,18 @@ if [[ "$RUN_BUILD_ANDROID" = "1" ]]; then
         -android-ndk "${ANDROID_NDK_ROOT}" \
         -android-sdk "${ANDROID_SDK_ROOT}" \
         -qt-host-path "/opt/qt/v${QT_VERSION}/gcc_64" \
-        -android-abis arm64-v8a -- \
-        -DQT_ALLOW_DOWNLOAD=ON \
-        -DCMAKE_JOB_POOLS="compile=3;link=2" \
-        -DCMAKE_JOB_POOL_COMPILE=compile \
-        -DCMAKE_JOB_POOL_LINK=link
         -skip qttasktree -skip qtpdf \
         -skip qtcanvas3d -skip qtfeedback -skip qtgamepad -skip qtpim \
         -skip qtsystems -skip qtwebglplugin -skip qtxmlpatterns -skip qtrepotools \
         -skip qt3d -skip qtquick3d -skip qtwebengine -skip qtwebview \
         -skip qtdoc -skip qttranslations -skip qtlottie \
         -skip qtspeech -skip qtvirtualkeyboard -skip qtactiveqt \
-        -skip qtquick3dphysics \
+        -skip qtquick3dphysics \        
+        -android-abis arm64-v8a -- \
+        -DQT_ALLOW_DOWNLOAD=ON \
+        -DCMAKE_JOB_POOLS="compile=3;link=2" \
+        -DCMAKE_JOB_POOL_COMPILE=compile \
+        -DCMAKE_JOB_POOL_LINK=link \        
         -DOPENSSL_INCLUDE_DIR=/opt/android-sdk/android_openssl/ssl_3/include \
         -DOPENSSL_LIBRARIES=/opt/android-sdk/android_openssl/ssl_3/arm64-v8a
 
