@@ -27,7 +27,7 @@ RUN echo 'Acquire::Languages "none";' > /etc/apt/apt.conf.d/90nolanguages \
     software-properties-common gnupg ca-certificates apt-transport-https \
     build-essential cmake ninja-build git wget curl ccache pkg-config \
     flex bison gperf perl ruby zstd lzip autoconf libtool \
-    tzdata locales sudo rsync \
+    tzdata locales sudo tmux \
     python3 python3-dev python3-pip python3-venv python3-html5lib \
  && add-apt-repository -y ppa:deadsnakes/ppa \
  && apt-get update \
@@ -72,12 +72,68 @@ RUN mkdir -p /usr/share/man/man1 \
     openjdk-21-jdk-headless protobuf-compiler xmlstarlet maven \
  && apt-get clean && rm -rf /var/lib/apt/lists/* /usr/share/doc/* /usr/share/man/*
 
+RUN cat << 'EOF' > /usr/local/bin/container-stats.sh
+#!/usr/bin/env bash
+mem_cur=$(cat /sys/fs/cgroup/memory.current 2>/dev/null || echo 0)
+mem_max=$(cat /sys/fs/cgroup/memory.max 2>/dev/null || echo "max")
+mem_cur_gb=$(awk -v c="$mem_cur" 'BEGIN {printf "%.1f", c/1073741824}')
+if [[ "$mem_max" == "max" ]]; then
+    mem_str="${mem_cur_gb}G"
+else
+    mem_max_gb=$(awk -v m="$mem_max" 'BEGIN {printf "%.1f", m/1073741824}')
+    mem_str="${mem_cur_gb}/${mem_max_gb}G"
+fi
+
+swap_cur=$(cat /sys/fs/cgroup/memory.swap.current 2>/dev/null || echo 0)
+swap_mb=$(awk -v s="$swap_cur" 'BEGIN {printf "%.0f", s/1048576}')
+
+read -r quota period < /sys/fs/cgroup/cpu.max 2>/dev/null || { quota="max"; period=100000; }
+if [[ "$quota" == "max" ]]; then
+    cores=$(nproc)
+else
+    cores=$(awk -v q="$quota" -v p="$period" 'BEGIN {print q/p}')
+fi
+
+u1=$(awk '/usage_usec/ {print $2}' /sys/fs/cgroup/cpu.stat 2>/dev/null || echo 0)
+t1=$(date +%s%N)
+sleep 0.2
+u2=$(awk '/usage_usec/ {print $2}' /sys/fs/cgroup/cpu.stat 2>/dev/null || echo 0)
+t2=$(date +%s%N)
+
+cpu_pct=$(awk -v u1="$u1" -v u2="$u2" -v t1="$t1" -v t2="$t2" -v c="$cores" 'BEGIN {
+    dt = (t2 - t1) / 1000.0;
+    if (dt > 0 && c > 0) printf "%.0f", ((u2 - u1) / dt / c) * 100;
+    else print "0";
+}')
+
+io_str=$(awk '{
+    for(i=1;i<=NF;i++) {
+        if($i ~ /^rbytes=/) r += substr($i, 8);
+        if($i ~ /^wbytes=/) w += substr($i, 8);
+    }
+} END {
+    printf "R:%.1fG W:%.1fG", r/1073741824, w/1073741824
+}' /sys/fs/cgroup/io.stat 2>/dev/null)
+[[ -z "$io_str" ]] && io_str="R:0G W:0G"
+
+echo "CPU:${cpu_pct}% | RAM:${mem_str} | SWP:${swap_mb}M | IO[${io_str}]"
+EOF
+RUN chmod +x /usr/local/bin/container-stats.sh \
+&&  cat << 'EOF' > /etc/tmux.conf
+set -g default-terminal "screen-256color"
+set -g mouse on
+set -g status-interval 2
+set -g status-style bg=colour235,fg=colour136
+set -g status-right-length 85
+set -g status-right "#[fg=colour81]#(/usr/local/bin/container-stats.sh) #[fg=colour245]| #[fg=colour214]%H:%M:%S "
+EOF
+
 ENV JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 \
     ANDROID_HOME="/opt/android-sdk" \
     ANDROID_SDK_ROOT="/opt/android-sdk" \
     ANDROID_NDK_ROOT="/opt/android-sdk/ndk/27.2.12479018"
 
-CMD ["/bin/bash"]
+CMD ["tmux", "new-session", "-A", "-s", "dev"]
 
 
 # ==============================================================================
@@ -109,7 +165,7 @@ RUN echo 'Acquire::Languages "none";' > /etc/apt/apt.conf.d/90nolanguages \
     openssh-client ca-certificates gnupg curl wget \
     build-essential cmake ninja-build git gdb lldb ccache pkg-config \
     cppcheck clang-format clang-tidy strace \
-    tzdata locales sudo mc rsync micro \
+    tzdata locales sudo mc tmux micro \
     python3 python3-pip python3-venv \
  && apt-get clean && rm -rf /var/lib/apt/lists/*
 
@@ -142,6 +198,10 @@ RUN mkdir -p /usr/share/man/man1 \
  && apt-get update && apt-get install -y --no-install-recommends \
     openjdk-21-jdk-headless xmlstarlet maven protobuf-compiler \
  && apt-get clean && rm -rf /var/lib/apt/lists/* /usr/share/doc/* /usr/share/man/*
+ 
+# 4. Копируем скрипт мониторинга и конфиг tmux из стадии builder
+COPY --from=builder /usr/local/bin/container-stats.sh /usr/local/bin/container-stats.sh
+COPY --from=builder /etc/tmux.conf /etc/tmux.conf
 
 # Примечание: Qt Creator ставится в init.sh через apt-get install /opt/download/qtcreator.deb.
 # Если вы хотите, чтобы Qt Creator был вшит в сам образ runtime, раскомментируйте блок ниже:

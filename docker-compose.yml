@@ -9,13 +9,10 @@ services:
       - 1.1.1.1
     memswap_limit: 7.5G  
     deploy:
-      resources:
-        limits:
-          cpus: '3.5'
-          memory: 5.5G
-        reservations:
-          cpus: '2.5'
-          memory: 4G
+        cpus: 2.0
+        mem_limit: 8g
+        mem_reservation: 4g
+        memswap_limit: 16g
     user: "root:root"
     build:
       dockerfile: ./Dockerfile
